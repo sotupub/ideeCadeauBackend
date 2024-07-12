@@ -2,7 +2,6 @@ import { NextFunction, Request, Response } from "express";
 import * as jwt from "jsonwebtoken";
 import * as dotenv from "dotenv";
 
-
 dotenv.config({ path: 'config.env' });
 const { JWT_SECRET = "" } = process.env;
 
@@ -23,6 +22,6 @@ export const authentification = (
   if (!decode) {
     return res.status(401).json({ message: "Unauthorized" });
   }
-  (req as any)[" currentUser"] = decode;
+  (req as any)["currentUser"] = decode;
  next();
 };

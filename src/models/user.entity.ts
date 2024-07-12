@@ -18,6 +18,9 @@ export class User {
     @Column()
     password: string;
 
+    @Column()
+    phonenumber: number;
+
     @Column({
         type: "enum",
         enum: ERole,

@@ -7,8 +7,8 @@ import { ERole } from "../models/enums/ERole";
 export class AuthController {
     
     static async signup(req: Request, res: Response) {
-        const { firstname,lastname, email, password, role } = req.body;
-        if (!firstname || !email || !password ) {
+        const { firstname,lastname, email, password, role, phonenumber } = req.body;
+        if (!firstname || !email || !password  || !phonenumber) {
             return res.status(400).json({ message: "All fields are required" });
         }
         const userRepository = AppDataSource.getRepository(User);
@@ -21,6 +21,11 @@ export class AuthController {
         const existingEmail = await userRepository.findOneBy({ email });
         if (existingEmail) {
             return res.status(400).json({ message: "Email already exists" });
+        }
+
+        const existingPhone = await userRepository.findOneBy({ phonenumber });
+        if (existingPhone) {
+            return res.status(400).json({ message: "Phonenumber already exists" });
         }
         
         if (password.length < 8) {
@@ -37,6 +42,7 @@ export class AuthController {
         user.lastname = lastname;
         user.email = email;
         user.password = encryptedPassword;
+        user.phonenumber = phonenumber
         user.role = role;
     
         await userRepository.save(user);
@@ -74,4 +80,6 @@ export class AuthController {
       return res.status(500).json({ message: "Internal server error" });
     }
   }
+
+  
 }
