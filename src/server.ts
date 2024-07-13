@@ -1,10 +1,9 @@
-import "reflect-metadata";
 import express from "express";
 import { Application } from "express";
 import dotenv from "dotenv";
 import { AppDataSource } from "./config/data-source";
 import routes from "./config/routes";
-
+import { errorHandler } from "./middlewares/error.middleware";
 dotenv.config({ path: 'config.env' });
 
 const app: Application = express();
@@ -13,6 +12,9 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 const PORT: number = Number(process.env.PORT);
+
+app.use(errorHandler);
+
 
 app.listen(PORT, async () => {
     try {

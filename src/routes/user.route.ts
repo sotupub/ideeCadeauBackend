@@ -5,7 +5,7 @@ import { authorization } from "../middlewares/role.middleware";
 
 const Router = express.Router();
 
-Router.get("/getall", authentification, authorization(["admin"]), UserController.getAllUsers);
+Router.get("/getall", authentification, authorization(["admin","superadmin"]), UserController.getAllUsers);
 Router.get("/getprofile", authentification, UserController.getProfile);
 Router.get("/updateprofile", authentification, UserController.updateProfile);
 Router.put("/resetpassword", authentification, UserController.resetPassword);
