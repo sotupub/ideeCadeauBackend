@@ -21,4 +21,12 @@ export class encrypt {
   static generateToken(payload: payload) {
     return jwt.sign(payload, JWT_SECRET, { expiresIn: "30d" });
   }
+
+  static async hashResetCode(resetCode: string) {
+    return bcrypt.hashSync(resetCode, 12);
+  }
+
+  static compareResetCode(hashResetCode: string, resetCode: string) {
+    return bcrypt.compareSync(resetCode, hashResetCode);
+  }
 }

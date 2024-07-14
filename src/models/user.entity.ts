@@ -28,4 +28,10 @@ export class User {
     })
     role: ERole;
 
+    @Column({ nullable: true })
+    resetCode: string;
+
+    @Column({ nullable: true })
+    resetCodeExpiration: Date;
+
 }
