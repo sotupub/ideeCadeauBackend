@@ -4,6 +4,7 @@ import { authRouter } from '../routes/auth.route';
 import { categoryRouter } from '../routes/category.route';
 import { subCategoryRouter } from '../routes/subcategory.route';
 import { modelRouter } from '../routes/model.route';
+import { productRouter } from '../routes/product.route';
 
 const router = express.Router();
 
@@ -12,6 +13,7 @@ router.use('/auth', authRouter);
 router.use("/category", categoryRouter);
 router.use("/subcategory", subCategoryRouter);
 router.use("/model", modelRouter);
+router.use("/product", productRouter);
 
 
 

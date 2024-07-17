@@ -7,7 +7,7 @@ const Router = express.Router();
 
 Router.get("/getall", authentification, authorization(["admin","superadmin"]), UserController.getAllUsers);
 Router.get("/getprofile", authentification, UserController.getProfile);
-Router.get("/updateprofile", authentification, UserController.updateProfile);
+Router.put("/updateprofile", authentification, UserController.updateProfile);
 Router.put("/resetpassword", authentification, UserController.resetPassword);
 
 

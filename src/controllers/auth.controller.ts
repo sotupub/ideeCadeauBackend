@@ -3,7 +3,6 @@ import { AppDataSource } from "../config/data-source";
 import { User } from "../models/user.entity";
 import { encrypt } from "../helpers/helpers";
 import { ERole } from "../models/enums/ERole";
-import * as nodemailer from "nodemailer";
 import * as dotenv from "dotenv";
 import EmailService from "../helpers/sendemail";
 
