@@ -76,7 +76,7 @@ export class AuthController {
         return res.status(404).json({ message: "Invalid password" });
       }
       
-      const token = encrypt.generateToken({ id: user.id });
+      const token = encrypt.generateToken({ id: user.id , role: user.role });
 
       return res.status(200).json({ message: "Login successful", token });
     } catch (error) {

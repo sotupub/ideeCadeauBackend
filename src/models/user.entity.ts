@@ -1,5 +1,6 @@
-import { Entity, PrimaryGeneratedColumn, Column } from "typeorm";
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from "typeorm";
 import { ERole } from "./enums/ERole";
+import { Order } from "./order.entity";
 
 @Entity()
 export class User {
@@ -33,5 +34,8 @@ export class User {
 
     @Column({ nullable: true })
     resetCodeExpiration: Date;
+
+    @OneToMany(() => Order, order => order.user)
+    orders: Order[];
 
 }

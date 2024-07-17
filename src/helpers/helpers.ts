@@ -7,6 +7,7 @@ const { JWT_SECRET = "" } = process.env;
 
 type payload = {
     id: string;
+    role: string;
 };
 
 export class encrypt {

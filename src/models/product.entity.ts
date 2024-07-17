@@ -1,7 +1,8 @@
-import {Entity, PrimaryGeneratedColumn, Column, ManyToMany, JoinTable, ManyToOne} from "typeorm";
+import {Entity, PrimaryGeneratedColumn, Column, ManyToMany, JoinTable, ManyToOne, OneToMany} from "typeorm";
 import { Category } from "./category.entity";
 import { SubCategory } from "./subcategory.entity";
 import { Model } from "./model.entity";
+import { OrderItem } from "./orderitem.entity";
   
   @Entity()
   export class Product {
@@ -41,6 +42,12 @@ import { Model } from "./model.entity";
 
     @ManyToOne(() => Model, model => model.id)
     model: Model;
+    
+    @OneToMany(() => OrderItem, orderItem => orderItem.product)
+    orderItems: OrderItem[];
+
+
+
   }
   
   
