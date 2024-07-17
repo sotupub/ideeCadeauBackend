@@ -9,5 +9,6 @@ Router.post("/create", authentification, authorization(["admin"]), ProductContro
 Router.get("/getall", ProductController.getAllProducts);
 Router.put("/update/:id", authentification, authorization(["admin"]), ProductController.updateProduct);
 Router.delete("/delete/:id", authentification, authorization(["admin"]), ProductController.deleteProduct);
+Router.get("/:id", ProductController.getProductById);
 
 export { Router as productRouter };

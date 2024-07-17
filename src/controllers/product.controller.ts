@@ -66,7 +66,6 @@ export class ProductController {
             product.model = model;
             product.oldprice = oldprice;
 
-
             await productRepository.save(product);
 
             return res.status(201).json(product);
@@ -188,6 +187,22 @@ export class ProductController {
             return res.status(204).json({ message: "Product deleted successfully" });
         } catch (error) {
             return res.status(500).json({ message: "Error deleting product", error });
+        }
+    }
+
+    static async getProductById(req: Request, res: Response): Promise<Response> {
+        const { id } = req.params; 
+    
+        const productRepository = AppDataSource.getRepository(Product); 
+    
+        try {
+            const product = await productRepository.findOne({ where: { id } }); 
+            if (!product) {
+                return res.status(404).json({ message: "Product not found" }); 
+            }
+            return res.json(product); 
+        } catch (error) {
+            return res.status(500).json({ message: "Error retrieving product", error }); 
         }
     }
 }
