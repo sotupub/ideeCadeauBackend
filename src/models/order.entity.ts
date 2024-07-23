@@ -1,7 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, JoinTable } from "typeorm";
 import { User } from "./user.entity";
-import { OrderItem } from "./orderitem.entity";
 import { EOrder } from "./enums/EOrder";
+import { OrderItem } from "./orderItem.entity";
 
 @Entity()
 export class Order {
@@ -22,6 +22,6 @@ export class Order {
     type: "enum",
     enum: EOrder,
     default: EOrder.PENDING
-})
-status: EOrder;
+  })
+  status: EOrder;
 }

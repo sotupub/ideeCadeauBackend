@@ -1,7 +1,8 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from "typeorm";
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany } from "typeorm";
 import { Order } from "./order.entity";
 import { Product } from "./product.entity";
 import { Exclude } from "class-transformer";
+import { Review } from "./review.entity";
 
 @Entity()
 export class OrderItem {
@@ -20,4 +21,7 @@ export class OrderItem {
 
   @Column("decimal")
   price: number;
+
+  @OneToMany(() => Review, (review) => review.orderItem)
+  reviews: Review[];
 }

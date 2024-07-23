@@ -6,6 +6,7 @@ import { subCategoryRouter } from '../routes/subcategory.route';
 import { modelRouter } from '../routes/model.route';
 import { productRouter } from '../routes/product.route';
 import { orderRouter } from '../routes/order.route';
+import { reviewRouter } from '../routes/review.route';
 
 const router = express.Router();
 
@@ -16,6 +17,7 @@ router.use("/subcategory", subCategoryRouter);
 router.use("/model", modelRouter);
 router.use("/product", productRouter);
 router.use("/order", orderRouter);
+router.use("/review", reviewRouter);
 
 
 export default router;

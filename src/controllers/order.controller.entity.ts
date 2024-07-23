@@ -3,7 +3,7 @@ import { Order } from "../models/order.entity";
 import { AppDataSource } from "../config/data-source";
 import { Product } from "../models/product.entity";
 import { User } from "../models/user.entity";
-import { OrderItem } from "../models/orderitem.entity";
+import { OrderItem } from "../models/orderItem.entity";
 import { classToPlain } from "class-transformer";
 
 export class OrderController {

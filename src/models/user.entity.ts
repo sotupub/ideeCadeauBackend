@@ -1,6 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from "typeorm";
 import { ERole } from "./enums/ERole";
 import { Order } from "./order.entity";
+import { Review } from "./review.entity";
 
 @Entity()
 export class User {
@@ -37,5 +38,8 @@ export class User {
 
     @OneToMany(() => Order, order => order.user)
     orders: Order[];
+
+    @OneToMany(() => Review, (review) => review.user)
+    reviews: Review[];
 
 }

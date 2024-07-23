@@ -5,6 +5,8 @@ import { AppDataSource } from "./config/data-source";
 import routes from "./config/routes";
 import { errorHandler } from "./middlewares/error.middleware";
 dotenv.config({ path: 'config.env' });
+import cors from "cors";
+
 
 const app: Application = express();
 
@@ -25,6 +27,11 @@ app.listen(PORT, async () => {
         console.error("❌ Error during Data Source initialization:", error);
     }
 });
+
+app.use(cors({
+    origin: "http://localhost:3000",
+    credentials: true,
+  }));
 
 app.use(routes);
 

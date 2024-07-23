@@ -2,7 +2,8 @@ import {Entity, PrimaryGeneratedColumn, Column, ManyToMany, JoinTable, ManyToOne
 import { Category } from "./category.entity";
 import { SubCategory } from "./subcategory.entity";
 import { Model } from "./model.entity";
-import { OrderItem } from "./orderitem.entity";
+import { OrderItem } from "./orderItem.entity";
+import { Review } from "./review.entity";
   
   @Entity()
   export class Product {
@@ -46,8 +47,8 @@ import { OrderItem } from "./orderitem.entity";
     @OneToMany(() => OrderItem, orderItem => orderItem.product)
     orderItems: OrderItem[];
 
-
-
+    @OneToMany(() => Review, (review) => review.product)
+    reviews: Review[];
   }
   
   
