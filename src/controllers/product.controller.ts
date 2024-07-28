@@ -7,11 +7,12 @@ import { Model } from "../models/model.entity";
 
 export class ProductController {
     static async createProduct(req: Request, res: Response): Promise<Response> {
-        const { name, description, price, categoryIds, subCategoryIds, image, modelId, oldprice} = req.body;
+        const { name, description, price, categoryIds, subCategoryIds, image, modelId, oldprice, stock, visible, stockAvailability} = req.body;
 
-        if (!name || !description || !price || !categoryIds || categoryIds.length === 0 || !modelId) {
+        if ( !modelId) {
             return res.status(400).json({ message: "Name, description,model ,price and at least one category are required" });
         }
+        
         const productRepository = AppDataSource.getRepository(Product);
         const categoryRepository = AppDataSource.getRepository(Category);
         const subCategoryRepository = AppDataSource.getRepository(SubCategory);
@@ -64,6 +65,9 @@ export class ProductController {
             product.subCategories = subCategories;
             product.image = image;
             product.model = model;
+            product.stock = stock;
+            product.visible = visible;
+            product.stockAvailability = stockAvailability;
             product.oldprice = oldprice;
 
             await productRepository.save(product);
@@ -87,7 +91,7 @@ export class ProductController {
 
     static async updateProduct(req: Request, res: Response): Promise<Response> {
         const productId = req.params.productId; 
-        const { name, description, price, categoryIds, subCategoryIds, image, modelId, oldprice } = req.body;
+        const { name, description, price, categoryIds, subCategoryIds, image, modelId, oldprice, stock, visible, stockAvailability } = req.body;
     
         const productRepository = AppDataSource.getRepository(Product);
         const categoryRepository = AppDataSource.getRepository(Category);
@@ -161,7 +165,15 @@ export class ProductController {
             if (oldprice) {
                 product.oldprice = oldprice;
             }
-    
+            if (stock) {
+                product.stock = stock;
+            }
+            if (visible) {
+                product.visible = visible;
+            }
+            if (stockAvailability) {
+                product.stockAvailability = stockAvailability;
+            }
             await productRepository.save(product);
     
             return res.status(200).json(product);

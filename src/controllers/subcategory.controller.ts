@@ -84,6 +84,30 @@ export class SubCategoryController {
     }
   }
 
+  static async getSubCategoriesByCategories(req: Request, res: Response): Promise<Response> {
+    const { categoryIds } = req.body;
+  
+    if (!Array.isArray(categoryIds) || categoryIds.length === 0) {
+      return res.status(400).json({ message: 'Invalid category IDs' });
+    }
+  
+    const subCategoryRepository = AppDataSource.getRepository(SubCategory);
+  
+    try {
+      const subCategories = await subCategoryRepository
+        .createQueryBuilder('subCategory')
+        .innerJoinAndSelect('subCategory.categories', 'category')
+        .where('category.id IN (:...categoryIds)', { categoryIds })
+        .getMany();
+  
+      return res.status(200).json(subCategories);
+    } catch (error) {
+      console.log(error);
+      return res.status(500).json({ message: 'Error retrieving subcategories', error });
+    }
+  }
+  
+
   static async deleteSubCategory(req: Request, res: Response): Promise<Response> {
     const { id } = req.params;
 

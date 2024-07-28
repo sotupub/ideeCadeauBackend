@@ -4,19 +4,23 @@ import { SubCategory } from "./subcategory.entity";
 import { Model } from "./model.entity";
 import { OrderItem } from "./orderItem.entity";
 import { Review } from "./review.entity";
+import { IsNumber, IsString } from "class-validator";
   
   @Entity()
   export class Product {
     @PrimaryGeneratedColumn("uuid")
     id: string;
-  
+    
+    @IsString()
     @Column()
     name: string;
   
     @Column()
+    @IsString()
     description: string;
   
     @Column({ type: 'decimal', precision: 10, scale: 2 })
+    @IsNumber()
     price: number;
 
     @Column({ type: 'decimal', precision: 10, scale: 2 , nullable: true})
@@ -38,8 +42,19 @@ import { Review } from "./review.entity";
     })
     subCategories?: SubCategory[];
   
-    @Column()
+    @Column({type: 'text'})
+    @IsString()
     image: string;
+
+    @Column()
+    @IsNumber()
+    stock: number;
+
+    @Column()
+    visible: boolean;
+
+    @Column()
+    stockAvailability: boolean;
 
     @ManyToOne(() => Model, model => model.id)
     model: Model;
