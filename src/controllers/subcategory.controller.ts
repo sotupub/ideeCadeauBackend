@@ -122,7 +122,7 @@ export class SubCategoryController {
 
       await subCategoryRepository.remove(subCategory);
 
-      return res.status(200).json({ message: "Subcategory deleted successfully" });
+      return res.status(200).json({ message: "Subcategory deleted successfully",id });
     } catch (error) {
       return res.status(500).json({ message: "Error deleting subcategory", error });
     }

@@ -24,4 +24,7 @@ export class Order {
     default: EOrder.PENDING
   })
   status: EOrder;
+
+  @Column("timestamp")
+  createdAt: Date;
 }

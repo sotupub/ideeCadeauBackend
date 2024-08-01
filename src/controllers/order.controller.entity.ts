@@ -45,6 +45,7 @@ export class OrderController {
       order.user = user;
       order.orderItems = items;
       order.total = total;
+      order.createdAt = new Date();
 
       await orderRepository.save(order);
 

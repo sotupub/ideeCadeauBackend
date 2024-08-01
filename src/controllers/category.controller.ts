@@ -83,7 +83,7 @@ export class CategoryController {
 
       await categoryRepository.remove(category);
 
-      return res.status(200).json({ message: "Category deleted successfully" });
+      return res.status(200).json({ message: "Category deleted successfully",id });
     } catch (error) {
       return res.status(500).json({ message: "Error deleting category", error });
     }

@@ -10,5 +10,6 @@ Router.get("/getall", ProductController.getAllProducts);
 Router.put("/update/:id", authentification, authorization(["admin"]), ProductController.updateProduct);
 Router.delete("/delete/:id", authentification, authorization(["admin"]), ProductController.deleteProduct);
 Router.get("/:id", ProductController.getProductById);
+Router.delete('/delete',  authentification, authorization(["admin"]),ProductController.deleteMultipleProducts);
 
 export { Router as productRouter };

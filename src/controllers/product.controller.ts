@@ -7,7 +7,7 @@ import { Model } from "../models/model.entity";
 
 export class ProductController {
     static async createProduct(req: Request, res: Response): Promise<Response> {
-        const { name, description, price, categoryIds, subCategoryIds, image, modelId, oldprice, stock, visible, stockAvailability} = req.body;
+        const { name, description, price, categoryIds, subCategoryIds, images, modelId, oldprice, stock, visible, stockAvailability} = req.body;
 
         if ( !modelId) {
             return res.status(400).json({ message: "Name, description,model ,price and at least one category are required" });
@@ -63,7 +63,7 @@ export class ProductController {
             product.price = price;
             product.categories = categories;
             product.subCategories = subCategories;
-            product.image = image;
+            product.images = images;
             product.model = model;
             product.stock = stock;
             product.visible = visible;
@@ -91,7 +91,7 @@ export class ProductController {
 
     static async updateProduct(req: Request, res: Response): Promise<Response> {
         const productId = req.params.productId; 
-        const { name, description, price, categoryIds, subCategoryIds, image, modelId, oldprice, stock, visible, stockAvailability } = req.body;
+        const { name, description, price, categoryIds, subCategoryIds, images, modelId, oldprice, stock, visible, stockAvailability } = req.body;
     
         const productRepository = AppDataSource.getRepository(Product);
         const categoryRepository = AppDataSource.getRepository(Category);
@@ -150,8 +150,8 @@ export class ProductController {
                 }
                 product.subCategories = subCategories;
             }
-            if (image) {
-                product.image = image;
+            if (images) {
+                product.images = images;
             }
             if (modelId) {
                 console.log(`Recherche du modèle avec l'ID : ${modelId}`);
@@ -168,10 +168,10 @@ export class ProductController {
             if (stock) {
                 product.stock = stock;
             }
-            if (visible) {
+            if (visible !== undefined) {
                 product.visible = visible;
             }
-            if (stockAvailability) {
+            if (stockAvailability !== undefined) {
                 product.stockAvailability = stockAvailability;
             }
             await productRepository.save(product);
@@ -208,13 +208,37 @@ export class ProductController {
         const productRepository = AppDataSource.getRepository(Product); 
     
         try {
-            const product = await productRepository.findOne({ where: { id } }); 
+            const product = await productRepository.findOne({ where: { id } , relations: ["categories", "subCategories","model"],}); 
             if (!product) {
                 return res.status(404).json({ message: "Product not found" }); 
             }
             return res.json(product); 
         } catch (error) {
             return res.status(500).json({ message: "Error retrieving product", error }); 
+        }
+    }
+
+    static async deleteMultipleProducts(req: Request, res: Response): Promise<Response> {
+        const { ids } = req.body; 
+    
+        if (!Array.isArray(ids) || ids.length === 0) {
+            return res.status(400).json({ message: "No product IDs provided" });
+        }
+    
+        const productRepository = AppDataSource.getRepository(Product);
+    
+        try {
+            const products = await productRepository.findByIds(ids);
+    
+            if (products.length === 0) {
+                return res.status(404).json({ message: "No products found with the provided IDs" });
+            }
+    
+            await productRepository.remove(products);
+    
+            return res.status(200).json({ message: "Products deleted successfully", ids });
+        } catch (error) {
+            return res.status(500).json({ message: "Error deleting products", error });
         }
     }
 }

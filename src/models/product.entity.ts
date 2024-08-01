@@ -42,9 +42,8 @@ import { IsNumber, IsString } from "class-validator";
     })
     subCategories?: SubCategory[];
   
-    @Column({type: 'text'})
-    @IsString()
-    image: string;
+    @Column("text", { array: true })
+    images: string[];  
 
     @Column()
     @IsNumber()
