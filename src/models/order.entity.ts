@@ -27,4 +27,7 @@ export class Order {
 
   @Column("timestamp")
   createdAt: Date;
+
+  @Column()
+  adress: string;
 }

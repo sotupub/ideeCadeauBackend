@@ -8,7 +8,7 @@ import { classToPlain } from "class-transformer";
 
 export class OrderController {
   static async createOrder(req: Request, res: Response): Promise<Response> {
-    const { orderItems } = req.body; // orderItems: [{ productId, quantity }]
+    const { orderItems, adress } = req.body; // orderItems: [{ productId, quantity }]
     const userId = (req as any)["currentUser"].id;
 
     const orderRepository = AppDataSource.getRepository(Order);
@@ -44,6 +44,7 @@ export class OrderController {
       const order = new Order();
       order.user = user;
       order.orderItems = items;
+      order.adress = adress;
       order.total = total;
       order.createdAt = new Date();
 
