@@ -123,13 +123,11 @@ export class OrderController {
     }
   }
 
-  static async updateOrder(req: Request, res: Response): Promise<Response> {
+  static async updateOrderStatus(req: Request, res: Response): Promise<Response> {
     const { id } = req.params;
-    const { orderItems, status } = req.body; // orderItems: [{ productId, quantity }]
+    const { status } = req.body; 
 
     const orderRepository = AppDataSource.getRepository(Order);
-    const orderItemRepository = AppDataSource.getRepository(OrderItem);
-    const productRepository = AppDataSource.getRepository(Product);
 
     try {
       const order = await orderRepository.findOne({
@@ -139,34 +137,6 @@ export class OrderController {
 
       if (!order) {
         return res.status(404).json({ message: "Order not found" });
-      }
-
-      let total = 0;
-      const items = [];
-
-      if (orderItems && orderItems.length > 0) {
-        // Supprimez les anciens items de commande
-        await orderItemRepository.delete({ order: { id: order.id } });
-
-        // Ajoutez les nouveaux items de commande
-        for (const item of orderItems) {
-          const product = await productRepository.findOne({ where: { id: item.productId } });
-          if (!product) {
-            return res.status(404).json({ message: `Product with id ${item.productId} not found` });
-          }
-
-          const orderItem = new OrderItem();
-          orderItem.order = order;
-          orderItem.product = product;
-          orderItem.quantity = item.quantity;
-          orderItem.price = product.price;
-          total += product.price * item.quantity;
-          items.push(orderItem);
-        }
-
-        await orderItemRepository.save(items);
-        order.orderItems = items;
-        order.total = total;
       }
 
       if (status) {
@@ -184,7 +154,54 @@ export class OrderController {
     }
   }
 
+  static async updateOrderItemQuantity(req: Request, res: Response): Promise<Response> {
+    const { orderItemId } = req.params;
+    const { quantity } = req.body;
 
+    const orderItemRepository = AppDataSource.getRepository(OrderItem);
+    const productRepository = AppDataSource.getRepository(Product);
+    const orderRepository = AppDataSource.getRepository(Order);
 
-  
+    try {
+      const orderItem = await orderItemRepository.findOne({
+        where: { id: orderItemId },
+        relations: ["order", "product"],
+      });
+
+      if (!orderItem) {
+        return res.status(404).json({ message: "OrderItem not found" });
+      }
+
+      const product = await productRepository.findOne({ where: { id: orderItem.product.id } });
+      if (!product) {
+        return res.status(404).json({ message: `Product with id ${orderItem.product.id} not found` });
+      }
+
+      const order = orderItem.order;
+      if (!order) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+
+      // Mettre à jour la quantité de l'élément de commande
+      orderItem.quantity = quantity;
+      await orderItemRepository.save(orderItem);
+
+      // Recalculer le total de la commande
+      const orderItems = await orderItemRepository.find({ where: { order: { id: order.id } }, relations: ["product"] });
+      console.log("orderItems", orderItems);
+      let total = 0;
+      for (const item of orderItems) {
+        total += item.product.price * item.quantity;
+      }
+
+      order.total = parseFloat(total.toFixed(2)); 
+      await orderRepository.save(order);
+
+      return res.status(200).json({ message: "OrderItem quantity updated successfully", orderItem, total: order.total });
+    } catch (error) {
+      console.log(error);
+      return res.status(500).json({ message: "Error updating order item quantity", error });
+    }
+  }
 }
+

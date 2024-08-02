@@ -15,7 +15,7 @@ export class Order {
   @JoinTable()
   orderItems: OrderItem[];
 
-  @Column("decimal")
+  @Column("decimal", { precision: 10, scale: 2 })
   total: number;
 
   @Column({

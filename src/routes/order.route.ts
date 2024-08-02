@@ -9,6 +9,7 @@ Router.post("/create", authentification, authorization(["client"]), OrderControl
 Router.get("/all", authentification, authorization(["admin"]),OrderController.getAllOrders);
 Router.get("/myorders", authentification, authorization(["client"]), OrderController.getUserOrders);
 Router.get("/:id", authentification, authorization(["client","admin"]), OrderController.getOrderById);
-Router.put("/:id", authentification,  authorization(["admin"]),OrderController.updateOrder); // Route pour mettre à jour une commande
+Router.put("/:id", authentification, authorization(["admin"]),OrderController.updateOrderStatus); 
+Router.put('/order-items/:orderItemId', authentification, authorization(["admin"]), OrderController.updateOrderItemQuantity);
 
 export { Router as orderRouter };
