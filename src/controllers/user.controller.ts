@@ -2,16 +2,17 @@ import { Request, Response } from "express";
 import { User } from "../models/user.entity";
 import { AppDataSource } from "../config/data-source";
 import { encrypt } from "../helpers/helpers";
+import { ERole } from "../models/enums/ERole";
 
 export class UserController {
-	static async getAllUsers(req: Request, res: Response): Promise<Response> {
-	try {
-	  const userRepository = AppDataSource.getRepository(User);
-	  const users = await userRepository.find();
-	  return res.json(users);
-	} catch (error) {
-	  return res.status(500).json({ message: "Error retrieving users", error });
-	}
+  static async getAllUsers(req: Request, res: Response): Promise<Response> {
+    try {
+      const userRepository = AppDataSource.getRepository(User);
+      const users = await userRepository.find({ where: { role: ERole.CLIENT } });
+      return res.json(users);
+    } catch (error) {
+      return res.status(500).json({ message: "Error retrieving users", error });
+    }
   }
 
   static async getProfile(req: Request, res: Response) {

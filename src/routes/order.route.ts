@@ -5,11 +5,14 @@ import { authorization } from "../middlewares/role.middleware";
 
 const Router = express.Router();
 
+Router.get('/monthly-sales', authentification, authorization(["admin"]),OrderController.getMonthlySalesStatistics);
+Router.get('/best-sellers', authentification, authorization(["admin"]), OrderController.getTopSellers);
 Router.post("/create", authentification, authorization(["client"]), OrderController.createOrder);
 Router.get("/all", authentification, authorization(["admin"]),OrderController.getAllOrders);
 Router.get("/myorders", authentification, authorization(["client"]), OrderController.getUserOrders);
 Router.get("/:id", authentification, authorization(["client","admin"]), OrderController.getOrderById);
 Router.put("/:id", authentification, authorization(["admin"]),OrderController.updateOrderStatus); 
+Router.get('/client-orders/:id', authentification, authorization(["admin"]), OrderController.getClientOrders);
 Router.put('/order-items/:orderItemId', authentification, authorization(["admin"]), OrderController.updateOrderItemQuantity);
 
 export { Router as orderRouter };

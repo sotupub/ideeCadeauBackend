@@ -8,7 +8,7 @@ import { classToPlain } from "class-transformer";
 
 export class OrderController {
   static async createOrder(req: Request, res: Response): Promise<Response> {
-    const { orderItems, adress } = req.body; // orderItems: [{ productId, quantity }]
+    const { orderItems, adress, paymentmode } = req.body; // orderItems: [{ productId, quantity }]
     const userId = (req as any)["currentUser"].id;
 
     const orderRepository = AppDataSource.getRepository(Order);
@@ -45,6 +45,7 @@ export class OrderController {
       order.user = user;
       order.orderItems = items;
       order.adress = adress;
+      order.paymentmode = paymentmode;
       order.total = total;
       order.createdAt = new Date();
 
@@ -202,6 +203,95 @@ export class OrderController {
     } catch (error) {
       console.log(error);
       return res.status(500).json({ message: "Error updating order item quantity", error });
+    }
+  }
+
+  static async getClientOrders(req: Request, res: Response): Promise<Response> {
+    const clientId = req.params.id; 
+
+    const orderRepository = AppDataSource.getRepository(Order);
+    const userRepository = AppDataSource.getRepository(User);
+
+    try {
+      const user = await userRepository.findOne({
+        where: { id: clientId },
+        relations: ["orders"],
+      });
+
+      if (!user) {
+        return res.status(404).json({ message: "Client not found" });
+      }
+
+      return res.json({
+        user: {
+          firstname: user.firstname,
+          lastname: user.lastname,
+        },
+        orders: user.orders,
+      });    } catch (error) {
+      return res.status(500).json({ message: "Error retrieving orders", error });
+    }
+  }
+
+  static async getMonthlySalesStatistics(req: Request, res: Response): Promise<Response> {
+    const orderRepository = AppDataSource.getRepository(Order);
+
+    try {
+      const monthlySales = await orderRepository
+        .createQueryBuilder("order")
+        .select("DATE_TRUNC('month', order.createdAt)", "month")
+        .addSelect("COUNT(order.id)", "orderCount")
+        .groupBy("DATE_TRUNC('month', order.createdAt)")
+        .orderBy("month")
+        .getRawMany();
+
+      // Formater les résultats pour une meilleure lisibilité
+      const formattedResults = monthlySales.map(sale => ({
+        month: sale.month,
+        orderCount: parseInt(sale.orderCount, 10)
+      }));
+
+      return res.status(200).json(formattedResults);
+    } catch (error) {
+      console.log(error);
+      return res.status(500).json({ message: "Error retrieving monthly sales statistics", error });
+    }
+  }
+
+  static async getTopSellers(req: Request, res: Response): Promise<Response> {
+    const orderItemRepository = AppDataSource.getRepository(OrderItem);
+    const productRepository = AppDataSource.getRepository(Product);
+
+
+    try {
+      const topSellers = await orderItemRepository
+        .createQueryBuilder("orderItem")
+        .select("orderItem.productId", "productId")
+        .addSelect("SUM(orderItem.quantity)", "quantity")
+        .groupBy("orderItem.productId")
+        .orderBy("quantity", "DESC")
+        .limit(5)
+        .getRawMany();
+
+      // Récupérer les informations du produit pour chaque best seller
+      const productIds = topSellers.map(seller => seller.productId);
+      const products = await productRepository.findByIds(productIds);
+      
+      const formattedResults = topSellers.map(seller => {
+        const product = products.find(p => p.id === seller.productId);
+        return {
+          productId: seller.productId,
+          totalQuantity: parseInt(seller.quantity, 10), 
+          productName: product?.name,
+          productImage: product?.images[0],
+          productPrice: product?.price
+        };
+      });
+
+      return res.status(200).json(formattedResults);
+    } catch (error) {
+      console.log(error);
+      return res.status(500).json({ message: "Error retrieving top sellers", error });
     }
   }
 }

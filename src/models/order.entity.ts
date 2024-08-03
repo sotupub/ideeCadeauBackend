@@ -2,6 +2,7 @@ import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, JoinTable
 import { User } from "./user.entity";
 import { EOrder } from "./enums/EOrder";
 import { OrderItem } from "./orderItem.entity";
+import { EPayment } from "./enums/EPayment";
 
 @Entity()
 export class Order {
@@ -30,4 +31,12 @@ export class Order {
 
   @Column()
   adress: string;
+
+  @Column({
+    type: "enum",
+    enum: EPayment,
+    nullable: true
+  })
+  paymentmode: EPayment;
+
 }
