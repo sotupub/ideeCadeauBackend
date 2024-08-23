@@ -276,4 +276,62 @@ export class ProductController {
             return res.status(500).json({ message: "Error deleting products", error });
         }
     }
+    static async getProductsByFilter(req: Request, res: Response) {
+        console.log('Received request with params:', req.query);
+        const categoryName = req.query.category as string;
+    const subcategoryName = req.query.subcategory as string;
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 12;
+    try {
+        const productRepository = AppDataSource.getRepository(Product);
+        const queryBuilder = productRepository.createQueryBuilder('product');
+
+        if (categoryName) {
+            const categoryRepository = AppDataSource.getRepository(Category);
+            const category = await categoryRepository.findOne({
+                where: { name: categoryName }
+            });
+
+            if (!category) {
+                return res.status(404).json({ error: 'Category not found' });
+            }
+
+            queryBuilder.innerJoin('product.categories', 'category')
+                        .where('category.name = :categoryName', { categoryName });
+        }
+
+        if (subcategoryName) {
+            const subCategoryRepository = AppDataSource.getRepository(SubCategory);
+            const subCategory = await subCategoryRepository.findOne({
+                where: { name: subcategoryName }
+            });
+
+            if (!subCategory) {
+                return res.status(404).json({ error: 'Subcategory not found' });
+            }
+
+            queryBuilder.innerJoin('product.subCategories', 'subCategory')
+                        .andWhere('subCategory.name = :subcategoryName', { subcategoryName });
+        }
+
+        const [products, total] = await queryBuilder.skip((page - 1) * limit)
+                                                     .take(limit)
+                                                     .getManyAndCount();
+
+        const totalPages = Math.ceil(total / limit);
+
+        return res.json({
+            products,
+            pagination: {
+                page,
+                limit,
+                total,
+                totalPages
+            }
+        });
+    } catch (error) {
+        console.error(error); // Log detailed error information
+        return res.status(500).json({ error: 'Internal server error' });
+    }
+}
 }
