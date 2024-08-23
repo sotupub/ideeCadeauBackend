@@ -4,6 +4,8 @@ import { AppDataSource } from "../config/data-source";
 import { Category } from "../models/category.entity";
 import { SubCategory } from "../models/subcategory.entity";
 import { Model } from "../models/model.entity";
+import { OrderItem } from "../models/orderItem.entity";
+import { In } from "typeorm";
 
 export class ProductController {
     static async createProduct(req: Request, res: Response): Promise<Response> {
@@ -241,86 +243,37 @@ export class ProductController {
         }
     }
 
-    static async deleteMultipleProducts(req: Request, res: Response): Promise<Response> {
-        const { ids } = req.body; 
+      static async deleteMultipleProducts(req: Request, res: Response): Promise<Response> {
+        const { ids } = req.body;
     
         if (!Array.isArray(ids) || ids.length === 0) {
-            return res.status(400).json({ message: "No product IDs provided" });
+          return res.status(400).json({ message: "No product IDs provided" });
         }
     
         const productRepository = AppDataSource.getRepository(Product);
+        const orderItemRepository = AppDataSource.getRepository(OrderItem);
     
         try {
-            const products = await productRepository.findByIds(ids);
+          const products = await productRepository.findByIds(ids);
     
-            if (products.length === 0) {
-                return res.status(404).json({ message: "No products found with the provided IDs" });
-            }
+          if (products.length === 0) {
+            return res.status(404).json({ message: "No products found with the provided IDs" });
+          }
     
-            await productRepository.remove(products);
+          // Récupérer les order_items associés aux produits à supprimer
+          const orderItems = await orderItemRepository.find({
+            where: { product: In(ids) } 
+          });
     
-            return res.status(200).json({ message: "Products deleted successfully", ids });
+          // Supprimer les order_items associés
+          await orderItemRepository.remove(orderItems);
+    
+          // Supprimer les produits
+          await productRepository.remove(products);
+    
+          return res.status(200).json({ message: "Products and associated order items deleted successfully", ids });
         } catch (error) {
             return res.status(500).json({ message: "Error deleting products", error });
         }
     }
-
-    static async getProductsByFilter(req: Request, res: Response) {
-        console.log('Received request with params:', req.query);
-        const categoryName = req.query.category as string;
-    const subcategoryName = req.query.subcategory as string;
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 12;
-    try {
-        const productRepository = AppDataSource.getRepository(Product);
-        const queryBuilder = productRepository.createQueryBuilder('product');
-
-        if (categoryName) {
-            const categoryRepository = AppDataSource.getRepository(Category);
-            const category = await categoryRepository.findOne({
-                where: { name: categoryName }
-            });
-
-            if (!category) {
-                return res.status(404).json({ error: 'Category not found' });
-            }
-
-            queryBuilder.innerJoin('product.categories', 'category')
-                        .where('category.name = :categoryName', { categoryName });
-        }
-
-        if (subcategoryName) {
-            const subCategoryRepository = AppDataSource.getRepository(SubCategory);
-            const subCategory = await subCategoryRepository.findOne({
-                where: { name: subcategoryName }
-            });
-
-            if (!subCategory) {
-                return res.status(404).json({ error: 'Subcategory not found' });
-            }
-
-            queryBuilder.innerJoin('product.subCategories', 'subCategory')
-                        .andWhere('subCategory.name = :subcategoryName', { subcategoryName });
-        }
-
-        const [products, total] = await queryBuilder.skip((page - 1) * limit)
-                                                     .take(limit)
-                                                     .getManyAndCount();
-
-        const totalPages = Math.ceil(total / limit);
-
-        return res.json({
-            products,
-            pagination: {
-                page,
-                limit,
-                total,
-                totalPages
-            }
-        });
-    } catch (error) {
-        console.error(error); // Log detailed error information
-        return res.status(500).json({ error: 'Internal server error' });
-    }
-}
 }
