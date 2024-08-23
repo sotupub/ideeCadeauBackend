@@ -17,17 +17,20 @@ export class ProductController {
         const categoryRepository = AppDataSource.getRepository(Category);
         const subCategoryRepository = AppDataSource.getRepository(SubCategory);
         const modelRepository = AppDataSource.getRepository(Model);
+        console.log("yess0")
 
         try {
             const model = await modelRepository.findOne({ where: { id: modelId } });
             if (!model) {
               return res.status(404).json({ message: "Model not found" });
             }
+            console.log("yess1")
 
             const categories = await categoryRepository.findByIds(categoryIds);
             if (categories.length !== categoryIds.length) {
                 return res.status(404).json({ message: "One or more categories not found" });
             }
+            console.log("yess2")
 
             let subCategories: string | any[] | undefined = [];
             if (subCategoryIds && subCategoryIds.length > 0) {
@@ -35,6 +38,7 @@ export class ProductController {
               if (subCategories.length !== subCategoryIds.length) {
                 return res.status(404).json({ message: "One or more subcategories not found" });
               }
+              console.log("yess3")
 
               // Vérifier si les sous-catégories appartiennent aux catégories concernées
               for (const subCategory of subCategories) {
@@ -43,10 +47,13 @@ export class ProductController {
                     .leftJoinAndSelect("subCategory.categories", "category")
                     .where("subCategory.id = :id", { id: subCategory.id })
                     .getMany();
+                    console.log("yess4")
 
                 const parentCategoryIds = parentCategories.flatMap(subCat => subCat.categories.map(cat => cat.id));
+                console.log("yess5")
 
                 const isValidSubCategory = categoryIds.some((id: string) => parentCategoryIds.includes(id));
+                console.log("yess6")
 
                 if (!isValidSubCategory) {
                     console.log(`La sous-catégorie ${subCategory.id} n'appartient pas aux catégories fournies.`);
@@ -56,7 +63,7 @@ export class ProductController {
                 }
               }
             }
-
+            console.log("yess")
             const product = new Product();
             product.name = name;
             product.description = description;
@@ -69,8 +76,10 @@ export class ProductController {
             product.visible = visible;
             product.stockAvailability = stockAvailability;
             product.oldprice = oldprice;
+            console.log("yess8")
 
             await productRepository.save(product);
+            console.log("yess9")
 
             return res.status(201).json(product);
         } catch (error) {
@@ -80,10 +89,24 @@ export class ProductController {
 
     static async getAllProducts(req: Request, res: Response): Promise<Response> {
         const productRepository = AppDataSource.getRepository(Product);
+        const page = parseInt(req.query.page as string) || 1;
+        const limit = parseInt(req.query.limit as string) || 10;
+        const offset = (page - 1) * limit;
 
         try {
-            const products = await productRepository.find({ relations: ["categories", "subCategories"] });
-            return res.json(products);
+            const [products, total] = await productRepository.findAndCount({
+                relations: ["categories", "subCategories"],
+                skip: offset,
+                take: limit,
+            });
+            const totalPages = Math.ceil(total / limit);
+
+            return res.json({
+                data: products,
+                total,
+                page,
+                totalPages,
+            });
         } catch (error) {
             return res.status(500).json({ message: "Error retrieving products", error });
         }
@@ -241,4 +264,63 @@ export class ProductController {
             return res.status(500).json({ message: "Error deleting products", error });
         }
     }
+
+    static async getProductsByFilter(req: Request, res: Response) {
+        console.log('Received request with params:', req.query);
+        const categoryName = req.query.category as string;
+    const subcategoryName = req.query.subcategory as string;
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 12;
+    try {
+        const productRepository = AppDataSource.getRepository(Product);
+        const queryBuilder = productRepository.createQueryBuilder('product');
+
+        if (categoryName) {
+            const categoryRepository = AppDataSource.getRepository(Category);
+            const category = await categoryRepository.findOne({
+                where: { name: categoryName }
+            });
+
+            if (!category) {
+                return res.status(404).json({ error: 'Category not found' });
+            }
+
+            queryBuilder.innerJoin('product.categories', 'category')
+                        .where('category.name = :categoryName', { categoryName });
+        }
+
+        if (subcategoryName) {
+            const subCategoryRepository = AppDataSource.getRepository(SubCategory);
+            const subCategory = await subCategoryRepository.findOne({
+                where: { name: subcategoryName }
+            });
+
+            if (!subCategory) {
+                return res.status(404).json({ error: 'Subcategory not found' });
+            }
+
+            queryBuilder.innerJoin('product.subCategories', 'subCategory')
+                        .andWhere('subCategory.name = :subcategoryName', { subcategoryName });
+        }
+
+        const [products, total] = await queryBuilder.skip((page - 1) * limit)
+                                                     .take(limit)
+                                                     .getManyAndCount();
+
+        const totalPages = Math.ceil(total / limit);
+
+        return res.json({
+            products,
+            pagination: {
+                page,
+                limit,
+                total,
+                totalPages
+            }
+        });
+    } catch (error) {
+        console.error(error); // Log detailed error information
+        return res.status(500).json({ error: 'Internal server error' });
+    }
+}
 }
