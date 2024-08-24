@@ -24,11 +24,11 @@ app.listen(PORT, async () => {
         await AppDataSource.initialize();
         console.log(`🗄️  Server Fire on http://localhost:${PORT}`);
         console.log("📦 Connected to the database successfully");
+        test();
     } catch (error) {
         console.error("❌ Error during Data Source initialization:", error);
     }
 });
-test();
 
 app.use(cors());
 
