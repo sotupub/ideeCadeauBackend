@@ -31,7 +31,7 @@ app.listen(PORT, async () => {
     }
 });
 
-const allowedOrigins = ["http://localhost:3000", "http://localhost:3001"];
+const allowedOrigins = ["http://localhost:3000", "http://localhost:3001", "http://localhost:4000"];
 
 const corsOptions = {
   origin: (origin: any, callback: any) => {
