@@ -64,8 +64,8 @@ import { IsNumber, IsString } from "class-validator";
     @OneToMany(() => Review, (review) => review.product)
     reviews: Review[];
 
-    @Column()
-    options: string; 
+    @Column({ type: "varchar", length: 255, nullable: true })
+    options?: string;
   }
   
   

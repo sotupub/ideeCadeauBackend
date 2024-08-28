@@ -107,7 +107,7 @@ export class ProductController {
 
     static async updateProduct(req: Request, res: Response): Promise<Response> {
         const productId = req.params.productId; 
-        const { name, description, price, categoryIds, subCategoryIds, images, modelId, oldprice, stock, visible, stockAvailability } = req.body;
+        const { name, description, price, categoryIds, subCategoryIds, images, modelId, oldprice, stock, visible, stockAvailability, options } = req.body;
     
         const productRepository = AppDataSource.getRepository(Product);
         const categoryRepository = AppDataSource.getRepository(Category);
@@ -189,6 +189,9 @@ export class ProductController {
             }
             if (stockAvailability !== undefined) {
                 product.stockAvailability = stockAvailability;
+            }
+            if (options !== undefined) {
+                product.options = options;
             }
             await productRepository.save(product);
     
