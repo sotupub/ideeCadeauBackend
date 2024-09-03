@@ -13,12 +13,12 @@ import { Review } from "../models/review.entity";
 dotenv.config({ path: 'config.env' });
 
 export const AppDataSource = new DataSource({
-    type: "postgres",
-    host: process.env.DB_HOST,
-    port: Number(process.env.DB_PORT),
-    username: process.env.DB_USERNAME,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
+    type: "mysql",
+    host: process.env.MYSQL_HOST,
+    port: Number(process.env.MYSQL_PORT),
+    username: process.env.MYSQL_USER,
+    password: process.env.MYSQL_PASSWORD,
+    database: process.env.MYSQL_DATABASE,
     synchronize: true,
     logging: true,
     entities: [User, Category, SubCategory, Product, Model, Order, OrderItem, Review], 

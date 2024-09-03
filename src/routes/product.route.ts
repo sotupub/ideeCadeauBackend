@@ -9,6 +9,7 @@ Router.post("/create", authentification, authorization(["admin"]), ProductContro
 Router.get("/getall", ProductController.getAllProducts);
 Router.put("/update/:id", authentification, authorization(["admin"]), ProductController.updateProduct);
 Router.get("/filter",ProductController.getProductsByFilter);
+Router.get("/search", ProductController.getProductsByName);
 Router.delete("/delete/:id", authentification, authorization(["admin"]), ProductController.deleteProduct);
 Router.get("/:id", ProductController.getProductById);
 Router.delete('/delete',  authentification, authorization(["admin"]),ProductController.deleteMultipleProducts);

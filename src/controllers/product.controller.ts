@@ -5,7 +5,7 @@ import { Category } from "../models/category.entity";
 import { SubCategory } from "../models/subcategory.entity";
 import { Model } from "../models/model.entity";
 import { OrderItem } from "../models/orderItem.entity";
-import { In } from "typeorm";
+import { In, Like } from "typeorm";
 
 export class ProductController {
     static async createProduct(req: Request, res: Response): Promise<Response> {
@@ -332,6 +332,25 @@ export class ProductController {
     } catch (error) {
         console.error(error); // Log detailed error information
         return res.status(500).json({ error: 'Internal server error' });
+    }
+}
+static async getProductsByName(req: Request, res: Response): Promise<Response> {
+    const { name } = req.query;
+    const productRepository = AppDataSource.getRepository(Product);
+    try {
+        const products = await productRepository.find({
+            where: { name: Like(`%${name}%`) },
+            relations: ["categories", "subCategories", "model"],
+        });
+
+        if (products.length === 0) {
+            return res.status(404).json({ message: "No products found" });
+        }
+
+        return res.status(200).json(products);
+    } catch (error) {
+        console.error('Error fetching products by name:', error);
+        return res.status(500).json({ message: "Internal server error" });
     }
 }
 }

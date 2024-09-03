@@ -238,12 +238,12 @@ export class OrderController {
 
     try {
       const monthlySales = await orderRepository
-        .createQueryBuilder("order")
-        .select("DATE_TRUNC('month', order.createdAt)", "month")
-        .addSelect("COUNT(order.id)", "orderCount")
-        .groupBy("DATE_TRUNC('month', order.createdAt)")
-        .orderBy("month")
-        .getRawMany();
+      .createQueryBuilder("order")
+      .select("DATE_FORMAT(order.createdAt, '%Y-%m-01')", "month")
+      .addSelect("COUNT(order.id)", "orderCount")
+      .groupBy("DATE_FORMAT(order.createdAt, '%Y-%m-01')")
+      .orderBy("month")
+      .getRawMany();
 
       // Formater les résultats pour une meilleure lisibilité
       const formattedResults = monthlySales.map(sale => ({

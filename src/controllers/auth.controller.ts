@@ -64,7 +64,7 @@ export class AuthController {
           .status(500)
           .json({ message: "email and password required" });
       }
-
+      
       const userRepository = AppDataSource.getRepository(User);
       const user = await userRepository.findOne({ where: { email } });
       if (!user) {
