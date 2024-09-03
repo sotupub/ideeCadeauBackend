@@ -9,7 +9,7 @@ import { In, Like } from "typeorm";
 
 export class ProductController {
     static async createProduct(req: Request, res: Response): Promise<Response> {
-        const { name, description, price, categoryIds, subCategoryIds, images, modelId, oldprice, stock, visible, stockAvailability} = req.body;
+        const { name, description, price, categoryIds, subCategoryIds, images, modelId, oldprice, stock, visible, stockAvailability, options} = req.body;
 
         if ( !modelId) {
             return res.status(400).json({ message: "Name, description,model ,price and at least one category are required" });
@@ -19,20 +19,17 @@ export class ProductController {
         const categoryRepository = AppDataSource.getRepository(Category);
         const subCategoryRepository = AppDataSource.getRepository(SubCategory);
         const modelRepository = AppDataSource.getRepository(Model);
-        console.log("yess0")
 
         try {
             const model = await modelRepository.findOne({ where: { id: modelId } });
             if (!model) {
               return res.status(404).json({ message: "Model not found" });
             }
-            console.log("yess1")
 
             const categories = await categoryRepository.findByIds(categoryIds);
             if (categories.length !== categoryIds.length) {
                 return res.status(404).json({ message: "One or more categories not found" });
             }
-            console.log("yess2")
 
             let subCategories: string | any[] | undefined = [];
             if (subCategoryIds && subCategoryIds.length > 0) {
@@ -40,7 +37,6 @@ export class ProductController {
               if (subCategories.length !== subCategoryIds.length) {
                 return res.status(404).json({ message: "One or more subcategories not found" });
               }
-              console.log("yess3")
 
               // Vérifier si les sous-catégories appartiennent aux catégories concernées
               for (const subCategory of subCategories) {
@@ -49,13 +45,10 @@ export class ProductController {
                     .leftJoinAndSelect("subCategory.categories", "category")
                     .where("subCategory.id = :id", { id: subCategory.id })
                     .getMany();
-                    console.log("yess4")
 
                 const parentCategoryIds = parentCategories.flatMap(subCat => subCat.categories.map(cat => cat.id));
-                console.log("yess5")
 
                 const isValidSubCategory = categoryIds.some((id: string) => parentCategoryIds.includes(id));
-                console.log("yess6")
 
                 if (!isValidSubCategory) {
                     console.log(`La sous-catégorie ${subCategory.id} n'appartient pas aux catégories fournies.`);
@@ -65,7 +58,6 @@ export class ProductController {
                 }
               }
             }
-            console.log("yess")
             const product = new Product();
             product.name = name;
             product.description = description;
@@ -78,10 +70,9 @@ export class ProductController {
             product.visible = visible;
             product.stockAvailability = stockAvailability;
             product.oldprice = oldprice;
-            console.log("yess8")
+            product.options = options;
 
             await productRepository.save(product);
-            console.log("yess9")
 
             return res.status(201).json(product);
         } catch (error) {
@@ -116,7 +107,7 @@ export class ProductController {
 
     static async updateProduct(req: Request, res: Response): Promise<Response> {
         const productId = req.params.productId; 
-        const { name, description, price, categoryIds, subCategoryIds, images, modelId, oldprice, stock, visible, stockAvailability } = req.body;
+        const { name, description, price, categoryIds, subCategoryIds, images, modelId, oldprice, stock, visible, stockAvailability, options } = req.body;
     
         const productRepository = AppDataSource.getRepository(Product);
         const categoryRepository = AppDataSource.getRepository(Category);
@@ -198,6 +189,9 @@ export class ProductController {
             }
             if (stockAvailability !== undefined) {
                 product.stockAvailability = stockAvailability;
+            }
+            if (options !== undefined) {
+                product.options = options;
             }
             await productRepository.save(product);
     
