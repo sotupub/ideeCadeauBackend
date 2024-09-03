@@ -42,7 +42,7 @@ import { IsNumber, IsString } from "class-validator";
     })
     subCategories?: SubCategory[];
   
-    @Column("longtext")
+    @Column("text", { array: true })
     images: string[];  
 
     @Column()
