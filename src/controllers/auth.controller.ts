@@ -67,19 +67,25 @@ export class AuthController {
     static async login(req: Request, res: Response) {
     try {
       const { identifier, password } = req.body;
+      console.log("identifier: ", identifier);
+      console.log("password: ", password);
+      
       if (!identifier || !password) {
         return res
           .status(500)
           .json({ message: "Identifier and password required" });
       }
-  
+      console.log("correct params");
+      
       const userRepository = AppDataSource.getRepository(User);
       const user = await userRepository.findOne({
         where: [
           { email: identifier },
-          { phonenumber: identifier }
+          { phonenumber: Number(identifier) }
         ]
       });
+      console.log("user", user);
+      
   
       if (!user) {
         return res.status(404).json({ message: "User not found" });
