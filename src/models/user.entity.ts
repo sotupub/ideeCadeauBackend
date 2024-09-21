@@ -14,7 +14,7 @@ export class User {
     @Column({nullable: true})
     lastname: string;
 
-    @Column()
+    @Column({nullable: true})
     email: string;
 
     @Column()
@@ -42,4 +42,16 @@ export class User {
     @OneToMany(() => Review, (review) => review.user)
     reviews: Review[];
 
+    @Column({ type: "varchar", length: 255, nullable: true })
+    address?: string;
+
+    @Column({ type: "varchar", length: 255, nullable: true })
+    city?: string;
+
+    @Column({ type: "varchar", length: 255, nullable: true })
+    zipCode?: string;
+
+    @Column({ type: "varchar", length: 255, nullable: true })
+    country?: string;
+    
 }

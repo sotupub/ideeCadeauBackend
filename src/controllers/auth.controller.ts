@@ -9,75 +9,89 @@ import EmailService from "../helpers/sendemail";
 dotenv.config({ path: 'config.env' });
 
 export class AuthController {
-    
-    static async signup(req: Request, res: Response) {
-        const { firstname,lastname, email, password, role, phonenumber } = req.body;
-        if (!firstname || !email || !password  || !phonenumber) {
-            return res.status(400).json({ message: "All fields are required" });
-        }
-        const userRepository = AppDataSource.getRepository(User);
-        
-        const emailRegex = /^\S+@\S+\.\S+$/;
-        if (!emailRegex.test(email)) {
-            return res.status(400).json({ message: "Invalid email format" });
-        }
 
-        const existingEmail = await userRepository.findOneBy({ email });
-        if (existingEmail) {
-            return res.status(400).json({ message: "Email already exists" });
-        }
+  static async signup(req: Request, res: Response) {
+    const { firstname, lastname, email, password, role, phonenumber, address, city, zipCode, country } = req.body;
 
-        const existingPhone = await userRepository.findOneBy({ phonenumber });
-        if (existingPhone) {
-            return res.status(400).json({ message: "Phonenumber already exists" });
-        }
-        
-        if (password.length < 8) {
-            return res.status(400).json({ message: "Password must be at least 8 characters long" });
-        }
-    
-        if (!Object.values(ERole).includes(role)) {
-            return res.status(400).json({ message: "Invalid role" });
-        } 
-    
-        const encryptedPassword = await encrypt.encryptpass(password);
-        const user = new User();
-        user.firstname = firstname;
-        user.lastname = lastname;
-        user.email = email;
-        user.password = encryptedPassword;
-        user.phonenumber = phonenumber
-        user.role = role;
-    
-        await userRepository.save(user);
-    
-        return res
-          .status(200)
-          .json({ message: "User created successfully" });
-    }   
+    if (!firstname || !lastname || !password || !phonenumber || !country || !address || !city) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
+    const userRepository = AppDataSource.getRepository(User);
 
-  static async login(req: Request, res: Response) {
+    if (email) {
+      const emailRegex = /^\S+@\S+\.\S+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({ message: "Invalid email format" });
+      }
+
+      const existingEmail = await userRepository.findOneBy({ email });
+      if (existingEmail) {
+        return res.status(400).json({ message: "Email already exists" });
+      }
+    }
+
+
+    const existingPhone = await userRepository.findOneBy({ phonenumber });
+    if (existingPhone) {
+      return res.status(400).json({ message: "Phonenumber already exists" });
+    }
+
+    if (password.length < 8) {
+      return res.status(400).json({ message: "Password must be at least 8 characters long" });
+    }
+
+    if (!Object.values(ERole).includes(role)) {
+      return res.status(400).json({ message: "Invalid role" });
+    }
+
+    const encryptedPassword = await encrypt.encryptpass(password);
+    const user = new User();
+    user.firstname = firstname;
+    user.lastname = lastname;
+    user.email = email;
+    user.password = encryptedPassword;
+    user.phonenumber = phonenumber
+    user.role = role;
+    user.address = address;
+    user.city = city;
+    user.zipCode = zipCode;
+    user.country = country;
+
+    await userRepository.save(user);
+
+    return res
+      .status(200)
+      .json({ message: "User created successfully" });
+  }
+
+    static async login(req: Request, res: Response) {
     try {
-      const { email, password } = req.body;
-      if (!email || !password) {
+      const { identifier, password } = req.body;
+      if (!identifier || !password) {
         return res
           .status(500)
-          .json({ message: "email and password required" });
+          .json({ message: "Identifier and password required" });
       }
-      
+  
       const userRepository = AppDataSource.getRepository(User);
-      const user = await userRepository.findOne({ where: { email } });
+      const user = await userRepository.findOne({
+        where: [
+          { email: identifier },
+          { phonenumber: identifier }
+        ]
+      });
+  
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
-
-      const isPasswordValid = encrypt.comparepassword(user.password, password);
+  
+      const isPasswordValid = await encrypt.comparepassword(user.password, password);
       if (!isPasswordValid) {
         return res.status(404).json({ message: "Invalid password" });
       }
-      
-      const token = encrypt.generateToken({ id: user.id , role: user.role });
-
+  
+      const token = encrypt.generateToken({ id: user.id, role: user.role });
+  
       return res.status(200).json({ message: "Login successful", token });
     } catch (error) {
       console.error(error);
