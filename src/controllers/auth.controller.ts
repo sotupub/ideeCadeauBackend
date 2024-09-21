@@ -64,40 +64,44 @@ export class AuthController {
       .json({ message: "User created successfully" });
   }
 
-    static async login(req: Request, res: Response) {
+  static async login(req: Request, res: Response) {
     try {
       const { identifier, password } = req.body;
       console.log("identifier: ", identifier);
       console.log("password: ", password);
-      
+
       if (!identifier || !password) {
         return res
           .status(500)
           .json({ message: "Identifier and password required" });
       }
       console.log("correct params");
-      
+
+      const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier);
+      const isPhoneNumber = /^\d+$/.test(identifier);
+
       const userRepository = AppDataSource.getRepository(User);
-      const user = await userRepository.findOne({
-        where: [
-          { email: identifier },
-          { phonenumber: Number(identifier) }
-        ]
-      });
+
+      let user;
+      if (isEmail) {
+        user = await userRepository.findOne({ where: { email: identifier } });
+      } else if (isPhoneNumber) {
+        user = await userRepository.findOne({ where: { phonenumber: identifier } });
+      }
       console.log("user", user);
-      
-  
+
+
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
-  
+
       const isPasswordValid = await encrypt.comparepassword(user.password, password);
       if (!isPasswordValid) {
         return res.status(404).json({ message: "Invalid password" });
       }
-  
+
       const token = encrypt.generateToken({ id: user.id, role: user.role });
-  
+
       return res.status(200).json({ message: "Login successful", token });
     } catch (error) {
       console.error(error);
