@@ -8,7 +8,7 @@ import { classToPlain } from "class-transformer";
 
 export class OrderController {
   static async createOrder(req: Request, res: Response): Promise<Response> {
-    const { orderItems, adress, paymentmode } = req.body; // orderItems: [{ productId, quantity }]
+    const { orderItems, adress, paymentmode, city, zipCode, country, comment, total } = req.body; // orderItems: [{ productId, quantity }]
     const userId = (req as any)["currentUser"].id;
 
     const orderRepository = AppDataSource.getRepository(Order);
@@ -22,7 +22,6 @@ export class OrderController {
         return res.status(404).json({ message: "User not found" });
       }
 
-      let total = 0;
       const items = [];
 
       for (const item of orderItems) {
@@ -35,7 +34,6 @@ export class OrderController {
         orderItem.product = product;
         orderItem.quantity = item.quantity;
         orderItem.price = product.price;
-        total += product.price * item.quantity;
         items.push(orderItem);
       }
 
@@ -45,6 +43,10 @@ export class OrderController {
       order.user = user;
       order.orderItems = items;
       order.adress = adress;
+      order.city = city;
+      order.zipCode = zipCode;
+      order.country = country;
+      order.comment = comment;
       order.paymentmode = paymentmode;
       order.total = total;
       order.createdAt = new Date();

@@ -39,4 +39,15 @@ export class Order {
   })
   paymentmode: EPayment;
 
+  @Column({ type: "varchar", length: 255, nullable: true })
+  country?: string;
+
+  @Column({ type: "varchar", length: 255, nullable: true })
+  zipCode?: string;
+
+  @Column({ type: "varchar", length: 255, nullable: true })
+  city?: string;
+
+  @Column({ type: "varchar", length: 255, nullable: true })
+  comment?: string;
 }
