@@ -104,6 +104,7 @@ export class OrderController {
           user: {
             email: true,
             firstname: true,
+            lastname: true,
           },
         },
         relations: ["user"],
