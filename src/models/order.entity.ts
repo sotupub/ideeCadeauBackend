@@ -30,7 +30,7 @@ export class Order {
   createdAt: Date;
 
   @Column()
-  adress: string;
+  address: string;
 
   @Column({
     type: "enum",
