@@ -97,7 +97,15 @@ export class OrderController {
 
     try {
       const orders = await orderRepository.find({
-        relations: ["orderItems", "orderItems.product", "user"],
+        select: {
+          id: true,
+          status: true,
+          total: true,
+          user: {
+            email: true,
+          },
+        },
+        relations: ["user"],
       });
 
       return res.json(orders);
