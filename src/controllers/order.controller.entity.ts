@@ -34,6 +34,7 @@ export class OrderController {
         orderItem.product = product;
         orderItem.quantity = item.quantity;
         orderItem.price = product.price;
+        orderItem.image = item.image;
         items.push(orderItem);
       }
 
