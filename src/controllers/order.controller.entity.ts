@@ -106,6 +106,7 @@ export class OrderController {
             firstname: true,
             lastname: true,
           },
+          createdAt: true,
         },
         relations: ["user"],
       });
