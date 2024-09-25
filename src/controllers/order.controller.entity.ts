@@ -251,19 +251,23 @@ export class OrderController {
     const orderRepository = AppDataSource.getRepository(Order);
 
     try {
+      console.log("entered");
+      
       const monthlySales = await orderRepository
       .createQueryBuilder("order")
-      .select("DATE_FORMAT(order.createdAt, '%Y-%m-01')", "month")
+      .select("TO_CHAR(order.createdAt, 'YYYY-MM-01')", "month")
       .addSelect("COUNT(order.id)", "orderCount")
-      .groupBy("DATE_FORMAT(order.createdAt, '%Y-%m-01')")
+      .groupBy("TO_CHAR(order.createdAt, 'YYYY-MM-01')")
       .orderBy("month")
       .getRawMany();
-
+      console.log("monthlySales: ", monthlySales);
+      
       // Formater les résultats pour une meilleure lisibilité
       const formattedResults = monthlySales.map(sale => ({
         month: sale.month,
         orderCount: parseInt(sale.orderCount, 10)
       }));
+      console.log("formattedResults: ", formattedResults);
 
       return res.status(200).json(formattedResults);
     } catch (error) {
