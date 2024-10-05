@@ -16,11 +16,11 @@ export class ReviewController {
     try {
       const orderItem = await orderItemRepository.findOne({
         where: {
-            id: orderItemId,
-            order: { 
-                user: { id: userId },
-                status: EOrder.COMPLETED 
-            } 
+          id: orderItemId,
+          order: {
+            user: { id: userId },
+            status: EOrder.COMPLETED
+          }
         },
         relations: ["order", "product", "reviews"],
       });
@@ -33,7 +33,7 @@ export class ReviewController {
         where: { user: { id: userId }, orderItem: { id: orderItemId } },
       });
 
-      console.log(orderItemId,orderItem);
+      console.log(orderItemId, orderItem);
       console.log(existingReview);
 
       if (existingReview) {

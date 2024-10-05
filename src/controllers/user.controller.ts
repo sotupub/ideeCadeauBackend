@@ -33,7 +33,7 @@ export class UserController {
 
     const userRepository = AppDataSource.getRepository(User);
     const userId = (req as any)["currentUser"].id;
-    const { email, phonenumber, ...otherUpdates } = req.body;
+    const { email, phonenumber, password, ...otherUpdates } = req.body;
 
     try {
       const user = await userRepository.findOne({ where: { id: userId } });
@@ -55,16 +55,24 @@ export class UserController {
         user.email = email;
       }
 
-	  if (phonenumber) {
+      if (phonenumber) {
         const existingUser = await userRepository.findOne({ where: { phonenumber } });
         if (existingUser && existingUser.id !== userId) {
           return res.status(400).json({ message: "Phone number already in use" });
         }
-
         user.phonenumber = phonenumber;
       }
 
+      if (password) {
+        if (password.length < 8) {
+          return res.status(400).json({ message: "Password must be at least 8 characters long" });
+        }
+        const encryptedPassword = await encrypt.encryptpass(password);
+        otherUpdates.password = encryptedPassword;
+      }
+
       const updatedUser = await userRepository.save({ ...user, ...otherUpdates });
+
       return res.status(200).json({ ...updatedUser, password: undefined });
     } catch (error) {
       return res.status(500).json({ message: "Error updating profile", error });
@@ -92,7 +100,7 @@ export class UserController {
         return res.status(400).json({ message: "Old password is incorrect" });
       }
 
-	  if (newPassword.length < 8) {
+      if (newPassword.length < 8) {
         return res.status(400).json({ message: "New password must be at least 8 characters long" });
       }
 

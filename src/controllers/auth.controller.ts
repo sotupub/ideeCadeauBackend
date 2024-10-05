@@ -135,7 +135,9 @@ export class AuthController {
 
       await userRepository.save(user);
 
-      await EmailService.sendEmail(email, resetCode);
+      const text = `Your password reset code is: ${resetCode}`;
+      const subject = "Password Reset Code";
+      await EmailService.sendEmail(email, subject, text);
 
       return res.status(200).json({ message: "Password reset code sent successfully" });
     } catch (error) {

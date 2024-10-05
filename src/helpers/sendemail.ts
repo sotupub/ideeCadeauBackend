@@ -1,7 +1,7 @@
 import nodemailer from 'nodemailer';
 
 class EmailService {
-   static async sendEmail(email: string, resetCode: string): Promise<void> {
+   static async sendEmail(email: string, subject: string, text: string): Promise<void> {
 	const transporter = nodemailer.createTransport({
 	  service: 'Gmail',
 	  auth: {
@@ -13,8 +13,8 @@ class EmailService {
 	const mailOptions = {
 	  from: process.env.SMTP_USER,
 	  to: email,
-	  subject: "Password Reset Code",
-	  text: `Your password reset code is: ${resetCode}`,
+	  subject: subject,
+	  text: text,
 	};
 
 	await transporter.sendMail(mailOptions);

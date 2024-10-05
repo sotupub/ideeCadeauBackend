@@ -5,6 +5,9 @@ import { Product } from "../models/product.entity";
 import { User } from "../models/user.entity";
 import { OrderItem } from "../models/orderItem.entity";
 import { classToPlain } from "class-transformer";
+import EmailService from "../helpers/sendemail";
+import { log } from "console";
+import { EOrder } from "../models/enums/EOrder";
 
 export class OrderController {
   static async createOrder(req: Request, res: Response): Promise<Response> {
@@ -25,9 +28,11 @@ export class OrderController {
       const items = [];
 
       for (const item of orderItems) {
-        const product = await productRepository.findOne({ where: { id: item.productId } });
+        console.log("item", item);
+        const product = await productRepository.findOne({ where: { id: item.product } });
+
         if (!product) {
-          return res.status(404).json({ message: `Product with id ${item.productId} not found` });
+          return res.status(404).json({ message: `Product with id ${item.product} not found` });
         }
 
         const orderItem = new OrderItem();
@@ -54,6 +59,12 @@ export class OrderController {
 
       await orderRepository.save(order);
 
+      const email = user.email;
+      const subject = "Order Confirmation";
+      const text = `Votre commande a été passée avec succès. Numéro de la commande: ${order.id}`;
+      await EmailService.sendEmail(email, subject, text);
+      console.log(order);
+
       return res.status(201).json(order);
     } catch (error) {
       return res.status(500).json({ message: "Error creating order", error });
@@ -77,8 +88,8 @@ export class OrderController {
         return res.status(404).json({ message: "Order not found" });
       }
 
-      console.log("id",order.user.id, userId);
-      console.log("role",userRole)
+      console.log("id", order.user.id, userId);
+      console.log("role", userRole)
 
       // Vérifier si l'utilisateur est client et que l'ID de l'utilisateur de la commande correspond à l'ID de l'utilisateur actuel
       if (userRole === "client" && order.user.id !== userId) {
@@ -86,6 +97,69 @@ export class OrderController {
       }
 
       return res.json(order);
+    } catch (error) {
+      return res.status(500).json({ message: "Error retrieving order", error });
+    }
+  }
+
+  static async getOrderForReview(req: Request, res: Response): Promise<Response> {
+    const { id } = req.params;
+    const userId = (req as any)["currentUser"].id;
+    const userRole = (req as any)["currentUser"].role;
+
+    const orderRepository = AppDataSource.getRepository(Order);
+
+    try {
+      const order = await orderRepository.findOne({
+        where: { id, status: EOrder.COMPLETED },
+        relations: ["orderItems", "orderItems.product", "user"],
+      });
+
+      if (!order) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+
+      console.log("id", order.user.id, userId);
+      console.log("role", userRole);
+
+      // Vérifier si l'utilisateur est client et que l'ID de l'utilisateur de la commande correspond à l'ID de l'utilisateur actuel
+      if (order.user.id !== userId) {
+        return res.status(403).json({ message: "Forbidden: You can only access your own orders" });
+      }
+
+      // Define the type for transformedOrder
+      type TransformedOrder = {
+        id: string;
+        orderItems: {
+          id: string;
+          id_product: string;
+          name: string;
+          images: string[];
+        }[];
+      };
+
+      // Transform the order data to include only the required fields
+      const transformedOrder: TransformedOrder = {
+        id: order.id,
+        orderItems: []
+      };
+
+      const productMap = new Map<string, { id: string; id_product: string; name: string; images: string[] }>();
+
+      order.orderItems.forEach(item => {
+        if (!productMap.has(item.product.id)) {
+          productMap.set(item.product.id, {
+            id: item.id,
+            id_product: item.product.id,
+            name: item.product.name,
+            images: item.product.images ? [item.product.images[0]] : []
+          });
+        }
+      });
+
+      transformedOrder.orderItems = Array.from(productMap.values());
+
+      return res.json(transformedOrder);
     } catch (error) {
       return res.status(500).json({ message: "Error retrieving order", error });
     }
@@ -141,7 +215,7 @@ export class OrderController {
 
   static async updateOrderStatus(req: Request, res: Response): Promise<Response> {
     const { id } = req.params;
-    const { status } = req.body; 
+    const { status } = req.body;
 
     const orderRepository = AppDataSource.getRepository(Order);
 
@@ -158,8 +232,18 @@ export class OrderController {
       if (status) {
         order.status = status;
       }
-      
+
       await orderRepository.save(order);
+
+      if (status === "Complétée") {
+        const email = order.user.email;
+        const subject = "Order Shipped";
+        const text = `Nous espérons que votre commande a bien été livrée 
+        et attendons avec impatience votre avis.
+        Veuillez laisser votre avis ici : http://localhost:3000/review/${order.id}`;
+        await EmailService.sendEmail(email, subject, text);
+      }
+
       const orderResponse = classToPlain(order); // Convertit l'entité en objet sans références circulaires
 
 
@@ -210,7 +294,7 @@ export class OrderController {
         total += item.product.price * item.quantity;
       }
 
-      order.total = parseFloat(total.toFixed(2)); 
+      order.total = parseFloat(total.toFixed(2));
       await orderRepository.save(order);
 
       return res.status(200).json({ message: "OrderItem quantity updated successfully", orderItem, total: order.total });
@@ -221,7 +305,7 @@ export class OrderController {
   }
 
   static async getClientOrders(req: Request, res: Response): Promise<Response> {
-    const clientId = req.params.id; 
+    const clientId = req.params.id;
 
     const orderRepository = AppDataSource.getRepository(Order);
     const userRepository = AppDataSource.getRepository(User);
@@ -240,9 +324,14 @@ export class OrderController {
         user: {
           firstname: user.firstname,
           lastname: user.lastname,
+          address : user.address,
+          city : user.city,
+          zipCode : user.zipCode,
+          country : user.country,
         },
         orders: user.orders,
-      });    } catch (error) {
+      });
+    } catch (error) {
       return res.status(500).json({ message: "Error retrieving orders", error });
     }
   }
@@ -252,16 +341,16 @@ export class OrderController {
 
     try {
       console.log("entered");
-      
+
       const monthlySales = await orderRepository
-      .createQueryBuilder("order")
-      .select("TO_CHAR(order.createdAt, 'YYYY-MM-01')", "month")
-      .addSelect("COUNT(order.id)", "orderCount")
-      .groupBy("TO_CHAR(order.createdAt, 'YYYY-MM-01')")
-      .orderBy("month")
-      .getRawMany();
+        .createQueryBuilder("order")
+        .select("TO_CHAR(order.createdAt, 'YYYY-MM-01')", "month")
+        .addSelect("COUNT(order.id)", "orderCount")
+        .groupBy("TO_CHAR(order.createdAt, 'YYYY-MM-01')")
+        .orderBy("month")
+        .getRawMany();
       console.log("monthlySales: ", monthlySales);
-      
+
       // Formater les résultats pour une meilleure lisibilité
       const formattedResults = monthlySales.map(sale => ({
         month: sale.month,
@@ -294,12 +383,12 @@ export class OrderController {
       // Récupérer les informations du produit pour chaque best seller
       const productIds = topSellers.map(seller => seller.productId);
       const products = await productRepository.findByIds(productIds);
-      
+
       const formattedResults = topSellers.map(seller => {
         const product = products.find(p => p.id === seller.productId);
         return {
           productId: seller.productId,
-          totalQuantity: parseInt(seller.quantity, 10), 
+          totalQuantity: parseInt(seller.quantity, 10),
           productName: product?.name,
           productImage: product?.images[0],
           productPrice: product?.price
