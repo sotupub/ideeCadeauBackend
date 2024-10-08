@@ -13,7 +13,7 @@ export class AuthController {
   static async signup(req: Request, res: Response) {
     const { firstname, lastname, email, password, role, phonenumber, address, city, zipCode, country } = req.body;
 
-    if (!firstname || !lastname || !password || !phonenumber || !country || !address || !city) {
+    if (!firstname || !password || !phonenumber ) {
       return res.status(400).json({ message: "All fields are required" });
     }
     const userRepository = AppDataSource.getRepository(User);

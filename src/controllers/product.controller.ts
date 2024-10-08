@@ -106,7 +106,8 @@ export class ProductController {
     }
 
     static async updateProduct(req: Request, res: Response): Promise<Response> {
-        const productId = req.params.productId; 
+        const {id} = req.params; 
+
         const { name, description, price, categoryIds, subCategoryIds, images, modelId, oldprice, stock, visible, stockAvailability, options } = req.body;
     
         const productRepository = AppDataSource.getRepository(Product);
@@ -116,7 +117,7 @@ export class ProductController {
     
         try {
             const product = await productRepository.findOne({
-                where: { id: productId },
+                where: { id },
                 relations: ["categories", "subCategories","model"],
             });
     
