@@ -8,7 +8,10 @@ export class UserController {
   static async getAllUsers(req: Request, res: Response): Promise<Response> {
     try {
       const userRepository = AppDataSource.getRepository(User);
-      const users = await userRepository.find({ where: { role: ERole.CLIENT } });
+      const users = await userRepository.find({
+         where: { role: ERole.CLIENT },
+         select: ["id", "firstname", "lastname", "email", "phonenumber"]
+        });
       return res.json(users);
     } catch (error) {
       return res.status(500).json({ message: "Error retrieving users", error });
@@ -23,6 +26,14 @@ export class UserController {
     const user = await userRepository.findOne({
       where: { id: (req as any)["currentUser"].id },
     });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (user.role === 'admin') {
+      return res.status(200).json({ firstname: user.firstname });
+    }
+
     return res.status(200).json({ ...user, password: undefined });
   }
 

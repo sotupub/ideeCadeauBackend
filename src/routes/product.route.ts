@@ -6,7 +6,8 @@ import { authorization } from "../middlewares/role.middleware";
 const Router = express.Router();
 
 Router.post("/create", authentification, authorization(["admin"]), ProductController.createProduct);
-Router.get("/getall", ProductController.getAllProducts);
+Router.get("/getallvisible", ProductController.getAllVisibleProducts);
+Router.get("/getall", authentification, authorization(["admin"]), ProductController.getAllProducts);
 Router.put("/update/:id", authentification, authorization(["admin"]), ProductController.updateProduct);
 Router.get("/filter",ProductController.getProductsByFilter);
 Router.get("/search", ProductController.getProductsByName);

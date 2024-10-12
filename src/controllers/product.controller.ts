@@ -80,7 +80,7 @@ export class ProductController {
         }
     }
 
-    static async getAllProducts(req: Request, res: Response): Promise<Response> {
+    static async getAllVisibleProducts(req: Request, res: Response): Promise<Response> {
         const productRepository = AppDataSource.getRepository(Product);
         const page = parseInt(req.query.page as string) || 1;
         const limit = parseInt(req.query.limit as string) || 10;
@@ -88,6 +88,7 @@ export class ProductController {
 
         try {
             const [products, total] = await productRepository.findAndCount({
+                where: { visible: true },
                 relations: ["categories", "subCategories"],
                 skip: offset,
                 take: limit,
@@ -96,6 +97,46 @@ export class ProductController {
 
             return res.json({
                 data: products,
+                total,
+                page,
+                totalPages,
+            });
+        } catch (error) {
+            return res.status(500).json({ message: "Error retrieving products", error });
+        }
+    }
+
+    static async getAllProducts(req: Request, res: Response): Promise<Response> {
+        const productRepository = AppDataSource.getRepository(Product);
+        const page = parseInt(req.query.page as string) || 1;
+        const limit = parseInt(req.query.limit as string) || 10;
+        const offset = (page - 1) * limit;
+
+        try {
+            const [products, total] = await productRepository.findAndCount({
+                select: ["id", "images", "name", "price", "stock", "visible"],
+                relations: ["categories"],
+                skip: offset,
+                take: limit,
+            });
+
+            const mappedProducts = products.map(product => ({
+                id: product.id,
+                images: product.images,
+                name: product.name,
+                price: product.price,
+                stock: product.stock,
+                visible: product.visible,
+                categories: product.categories.map(category => ({
+                    id: category.id,
+                    name: category.name,
+                })),
+            }));
+
+            const totalPages = Math.ceil(total / limit);
+
+            return res.json({
+                data: mappedProducts,
                 total,
                 page,
                 totalPages,

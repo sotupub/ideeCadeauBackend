@@ -59,7 +59,19 @@ export class ReviewController {
     const reviewRepository = AppDataSource.getRepository(Review);
 
     try {
-      const reviews = await reviewRepository.find({ relations: ["user", "product", "orderItem"] });
+      const reviews = await reviewRepository.createQueryBuilder("review")
+        .leftJoinAndSelect("review.user", "user")
+        .leftJoinAndSelect("review.product", "product")
+        .select([
+          "review.id",
+          "review.rating",
+          "review.comment",
+          "user.firstname",
+          "user.lastname",
+          "product.name"
+        ])
+        .getMany();
+
       return res.status(200).json(reviews);
     } catch (error) {
       return res.status(500).json({ message: "Error retrieving reviews", error });
