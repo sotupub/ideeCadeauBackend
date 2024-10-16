@@ -6,6 +6,7 @@ import { authorization } from "../middlewares/role.middleware";
 const Router = express.Router();
 
 Router.post("/create", authentification, authorization(["client"]), ReviewController.createReview);
+Router.post("/add",  authentification, authorization(["admin"]), ReviewController.addReviewByAdmin);
 Router.get("/all", authentification, authorization(["admin"]), ReviewController.getAllReviews);
 Router.patch("/update-status", authentification, authorization(["admin"]), ReviewController.updateReviewStatus);
 Router.get("/product/:productId", ReviewController.getApprovedReviewsByProduct);
