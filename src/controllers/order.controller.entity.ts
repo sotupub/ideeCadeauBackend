@@ -401,5 +401,25 @@ export class OrderController {
       return res.status(500).json({ message: "Error retrieving top sellers", error });
     }
   }
+
+  static async TrackOrder(req: Request, res: Response): Promise<Response> {
+    const { id } = req.params;
+
+    const orderRepository = AppDataSource.getRepository(Order);
+
+    try {
+      const order = await orderRepository.findOne({
+        where: { id },
+      });
+
+      if (!order) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+
+      return res.status(200).json({ status: order.status });
+    } catch (error) {
+      return res.status(500).json({ message: "Error retrieving order", error });
+    }
+  }
 }
 

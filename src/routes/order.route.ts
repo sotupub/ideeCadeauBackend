@@ -13,7 +13,7 @@ Router.get("/myorders", authentification, authorization(["client"]), OrderContro
 Router.get("/:id", authentification, authorization(["client","admin"]), OrderController.getOrderById);
 Router.get("/review/:id", authentification, authorization(["client","admin"]), OrderController.getOrderForReview);
 Router.put("/:id", authentification, authorization(["admin"]),OrderController.updateOrderStatus); 
+Router.get('/track/:id', OrderController.TrackOrder);
 Router.get('/client-orders/:id', authentification, authorization(["admin"]), OrderController.getClientOrders);
 Router.put('/order-items/:orderItemId', authentification, authorization(["admin"]), OrderController.updateOrderItemQuantity);
-
 export { Router as orderRouter };
