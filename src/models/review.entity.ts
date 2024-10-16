@@ -18,10 +18,10 @@ export class Review {
   @CreateDateColumn()
   createdAt: Date;
 
-  @Column({nullable: true})
+  @Column()
   firstname : string;
 
-  @Column({nullable: true})
+  @Column()
   lastname : string;
 
   @ManyToOne(() => User, (user) => user.reviews)

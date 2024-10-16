@@ -70,7 +70,6 @@ export class ReviewController {
     const reviewRepository = AppDataSource.getRepository(Review);
 
     try {
-  
       const review = new Review();
       review.rating = rating;
       review.comment = comment;
@@ -101,8 +100,8 @@ export class ReviewController {
           "review.rating",
           "review.comment",
           "review.status",
-          "user.firstname",
-          "user.lastname",
+          "review.firstname",
+          "review.lastname",
           "product.name"
         ])
         .getMany();
