@@ -11,6 +11,6 @@ export class Model {
   @Column()
   image: string;
 
-  @Column()
+  @Column({nullable: true})
   options: string; 
 }

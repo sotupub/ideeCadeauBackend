@@ -10,6 +10,9 @@ import { IsNumber, IsString } from "class-validator";
   export class Product {
     @PrimaryGeneratedColumn("uuid")
     id: string;
+
+    @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+    createdAt: Date;
     
     @IsString()
     @Column()
@@ -41,9 +44,6 @@ import { IsNumber, IsString } from "class-validator";
       inverseJoinColumn: { name: "subCategoryId", referencedColumnName: "id" }
     })
     subCategories?: SubCategory[];
-  
-    @Column("text", { array: true })
-    images: string[];  
 
     @Column()
     @IsNumber()
@@ -66,6 +66,9 @@ import { IsNumber, IsString } from "class-validator";
 
     @Column({ type: "varchar", length: 255, nullable: true })
     options?: string;
+
+    @Column("text", { array: true })
+    images: string[];  
   }
   
   

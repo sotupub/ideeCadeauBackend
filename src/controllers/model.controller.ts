@@ -6,7 +6,7 @@ export class ModelController {
   static async createModel(req: Request, res: Response): Promise<Response> {
     const { name, image, options } = req.body;
 
-    if (!name || !image || !options) {
+    if (!name || !image ) {
       return res.status(400).json({ message: "All fields are required" });
     }
 

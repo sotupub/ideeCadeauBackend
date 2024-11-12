@@ -6,7 +6,6 @@ import { User } from "../models/user.entity";
 import { OrderItem } from "../models/orderItem.entity";
 import { classToPlain } from "class-transformer";
 import EmailService from "../helpers/sendemail";
-import { log } from "console";
 import { EOrder } from "../models/enums/EOrder";
 
 export class OrderController {
@@ -63,7 +62,7 @@ export class OrderController {
       const subject = "Order Confirmation";
       const text = `Votre commande a été passée avec succès. Numéro de la commande: ${order.id}`;
       await EmailService.sendEmail(email, subject, text);
-      console.log(order);
+      //console.log(order);
 
       return res.status(201).json(order);
     } catch (error) {
@@ -369,7 +368,6 @@ export class OrderController {
     const orderItemRepository = AppDataSource.getRepository(OrderItem);
     const productRepository = AppDataSource.getRepository(Product);
 
-
     try {
       const topSellers = await orderItemRepository
         .createQueryBuilder("orderItem")
@@ -387,11 +385,13 @@ export class OrderController {
       const formattedResults = topSellers.map(seller => {
         const product = products.find(p => p.id === seller.productId);
         return {
-          productId: seller.productId,
+          id: seller.productId,
           totalQuantity: parseInt(seller.quantity, 10),
-          productName: product?.name,
-          productImage: product?.images[0],
-          productPrice: product?.price
+          name: product?.name,
+          images: product?.images.slice(0, 2),
+          price: product?.price,
+          oldprice: product?.oldprice,
+          visible: product?.visible,
         };
       });
 
@@ -401,6 +401,7 @@ export class OrderController {
       return res.status(500).json({ message: "Error retrieving top sellers", error });
     }
   }
+
 
   static async TrackOrder(req: Request, res: Response): Promise<Response> {
     const { id } = req.params;
@@ -422,4 +423,5 @@ export class OrderController {
     }
   }
 }
+
 

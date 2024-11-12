@@ -1,12 +1,12 @@
 import * as express from "express";
 import { authentification } from "../middlewares/auth.middleware";
-import { OrderController } from "../controllers/order.controller.entity";
+import { OrderController } from "../controllers/order.controller";
 import { authorization } from "../middlewares/role.middleware";
 
 const Router = express.Router();
 
+Router.get('/best-sellers', OrderController.getTopSellers);
 Router.get('/monthly-sales', authentification, authorization(["admin"]),OrderController.getMonthlySalesStatistics);
-Router.get('/best-sellers', authentification, authorization(["admin"]), OrderController.getTopSellers);
 Router.post("/create", authentification, authorization(["client"]), OrderController.createOrder);
 Router.get("/all", authentification, authorization(["admin"]),OrderController.getAllOrders);
 Router.get("/myorders", authentification, authorization(["client"]), OrderController.getUserOrders);

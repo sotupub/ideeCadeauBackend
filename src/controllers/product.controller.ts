@@ -71,6 +71,7 @@ export class ProductController {
             product.stockAvailability = stockAvailability;
             product.oldprice = oldprice;
             product.options = options;
+            product.createdAt = new Date();
 
             await productRepository.save(product);
 
@@ -83,23 +84,31 @@ export class ProductController {
     static async getAllVisibleProducts(req: Request, res: Response): Promise<Response> {
         const productRepository = AppDataSource.getRepository(Product);
         const page = parseInt(req.query.page as string) || 1;
-        const limit = parseInt(req.query.limit as string) || 10;
+        const limit = parseInt(req.query.limit as string) || 20;
         const offset = (page - 1) * limit;
 
         try {
             const [products, total] = await productRepository.findAndCount({
                 where: { visible: true },
-                relations: ["categories", "subCategories"],
+                //relations: ["categories", "subCategories"],
+                select: ["id", "images", "name", "price", "oldprice", "createdAt"],
                 skip: offset,
                 take: limit,
             });
+
+            const mappedProducts = products.map(product => ({
+                id: product.id,
+                images: product.images.slice(0, 2), 
+                name: product.name,
+                price: product.price,
+                oldprice: product.oldprice,
+                createdAt : product.createdAt
+            }));
             const totalPages = Math.ceil(total / limit);
 
             return res.json({
-                data: products,
-                total,
-                page,
-                totalPages,
+                data: mappedProducts,
+                pagination: {total, page,totalPages},
             });
         } catch (error) {
             return res.status(500).json({ message: "Error retrieving products", error });
@@ -137,9 +146,7 @@ export class ProductController {
 
             return res.json({
                 data: mappedProducts,
-                total,
-                page,
-                totalPages,
+                pagination: {total, page,totalPages},
             });
         } catch (error) {
             return res.status(500).json({ message: "Error retrieving products", error });
@@ -235,6 +242,7 @@ export class ProductController {
             if (options !== undefined) {
                 product.options = options;
             }
+
             await productRepository.save(product);
     
             return res.status(200).json(product);
@@ -315,78 +323,99 @@ export class ProductController {
     static async getProductsByFilter(req: Request, res: Response) {
         console.log('Received request with params:', req.query);
         const categoryName = req.query.category as string;
-    const subcategoryName = req.query.subcategory as string;
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 12;
-    try {
+        const subcategoryName = req.query.subcategory as string;
+        const page = parseInt(req.query.page as string) || 1;
+        const limit = parseInt(req.query.limit as string) || 20;
+        try {
+            const productRepository = AppDataSource.getRepository(Product);
+            const queryBuilder = productRepository.createQueryBuilder('product');
+
+            if (categoryName) {
+                const categoryRepository = AppDataSource.getRepository(Category);
+                const category = await categoryRepository.findOne({
+                    where: { name: categoryName }
+                });
+
+                if (!category) {
+                    return res.status(404).json({ error: 'Category not found' });
+                }
+
+                queryBuilder.innerJoin('product.categories', 'category')
+                    .where('category.name = :categoryName', { categoryName });
+            }
+
+            if (subcategoryName) {
+                const subCategoryRepository = AppDataSource.getRepository(SubCategory);
+                const subCategory = await subCategoryRepository.findOne({
+                    where: { name: subcategoryName }
+                });
+
+                if (!subCategory) {
+                    return res.status(404).json({ error: 'Subcategory not found' });
+                }
+
+                queryBuilder.innerJoin('product.subCategories', 'subCategory')
+                    .andWhere('subCategory.name = :subcategoryName', { subcategoryName });
+            }
+
+            const [products, total] = await queryBuilder.skip((page - 1) * limit)
+                .take(limit)
+                .getManyAndCount();
+
+            const totalPages = Math.ceil(total / limit);
+
+            return res.json({
+                products,
+                pagination: {
+                    page,
+                    limit,
+                    total,
+                    totalPages
+                }
+            });
+        } catch (error) {
+            console.error(error); 
+            return res.status(500).json({ error: 'Internal server error' });
+        }
+    }
+    static async getProductsByName(req: Request, res: Response): Promise<Response> {
+        const { name } = req.query;
+        console.log('Received request with name:', name);
+        if (!name) {
+            return res.status(400).json({ message: "Name query parameter is required" });
+        }
         const productRepository = AppDataSource.getRepository(Product);
-        const queryBuilder = productRepository.createQueryBuilder('product');
+        try {
+            console.log(`Searching for products with name containing: ${name}`);
 
-        if (categoryName) {
-            const categoryRepository = AppDataSource.getRepository(Category);
-            const category = await categoryRepository.findOne({
-                where: { name: categoryName }
+            // Construire une requête dynamique pour vérifier la présence de chaque lettre
+            const queryBuilder = productRepository.createQueryBuilder('product');
+            const letters = (name as String).split('');
+            letters.forEach((letter: String, index: any) => {
+                queryBuilder.andWhere(`LOWER(product.name) LIKE :letter${index}`, { [`letter${index}`]: `%${letter}%` });
             });
 
-            if (!category) {
-                return res.status(404).json({ error: 'Category not found' });
+            const products = await queryBuilder
+                .select(['product.id', 'product.images', 'product.name', 'product.price', 'product.oldprice'])
+                .getMany();
+
+            if (!products || products.length === 0) {
+                return res.status(404).json({ message: "No products found" });
             }
 
-            queryBuilder.innerJoin('product.categories', 'category')
-                        .where('category.name = :categoryName', { categoryName });
+            console.log(`Found ${products.length} products`);
+
+            const mappedProducts = products.map(product => ({
+                id: product.id,
+                images: product.images.slice(0, 2),
+                name: product.name,
+                price: product.price,
+                oldprice: product.oldprice
+            }));
+            return res.status(200).json(mappedProducts);
+        } catch (error) {
+            console.error('Error fetching products by name:', error);
+            return res.status(500).json({ message: "Internal server error" });
         }
-
-        if (subcategoryName) {
-            const subCategoryRepository = AppDataSource.getRepository(SubCategory);
-            const subCategory = await subCategoryRepository.findOne({
-                where: { name: subcategoryName }
-            });
-
-            if (!subCategory) {
-                return res.status(404).json({ error: 'Subcategory not found' });
-            }
-
-            queryBuilder.innerJoin('product.subCategories', 'subCategory')
-                        .andWhere('subCategory.name = :subcategoryName', { subcategoryName });
-        }
-
-        const [products, total] = await queryBuilder.skip((page - 1) * limit)
-                                                     .take(limit)
-                                                     .getManyAndCount();
-
-        const totalPages = Math.ceil(total / limit);
-
-        return res.json({
-            products,
-            pagination: {
-                page,
-                limit,
-                total,
-                totalPages
-            }
-        });
-    } catch (error) {
-        console.error(error); // Log detailed error information
-        return res.status(500).json({ error: 'Internal server error' });
     }
-}
-static async getProductsByName(req: Request, res: Response): Promise<Response> {
-    const { name } = req.query;
-    const productRepository = AppDataSource.getRepository(Product);
-    try {
-        const products = await productRepository.find({
-            where: { name: Like(`%${name}%`) },
-            relations: ["categories", "subCategories", "model"],
-        });
-
-        if (products.length === 0) {
-            return res.status(404).json({ message: "No products found" });
-        }
-
-        return res.status(200).json(products);
-    } catch (error) {
-        console.error('Error fetching products by name:', error);
-        return res.status(500).json({ message: "Internal server error" });
-    }
-}
 }
