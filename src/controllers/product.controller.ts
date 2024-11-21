@@ -91,7 +91,7 @@ export class ProductController {
             const [products, total] = await productRepository.findAndCount({
                 where: { visible: true },
                 //relations: ["categories", "subCategories"],
-                select: ["id", "images", "name", "price", "oldprice", "createdAt"],
+                select: ["id", "images", "name", "price", "oldprice", "createdAt","description"],
                 skip: offset,
                 take: limit,
             });
@@ -102,6 +102,7 @@ export class ProductController {
                 name: product.name,
                 price: product.price,
                 oldprice: product.oldprice,
+                description: product.description,
                 createdAt : product.createdAt
             }));
             const totalPages = Math.ceil(total / limit);
@@ -117,16 +118,16 @@ export class ProductController {
 
     static async getAllProducts(req: Request, res: Response): Promise<Response> {
         const productRepository = AppDataSource.getRepository(Product);
-        const page = parseInt(req.query.page as string) || 1;
-        const limit = parseInt(req.query.limit as string) || 10;
-        const offset = (page - 1) * limit;
+      //  const page = parseInt(req.query.page as string) || 1;
+       // const limit = parseInt(req.query.limit as string) || 10;
+     //   const offset = (page - 1) * limit;
 
         try {
             const [products, total] = await productRepository.findAndCount({
                 select: ["id", "images", "name", "price", "stock", "visible"],
                 relations: ["categories"],
-                skip: offset,
-                take: limit,
+             //   skip: offset,
+                //take: limit,
             });
 
             const mappedProducts = products.map(product => ({
@@ -142,11 +143,11 @@ export class ProductController {
                 })),
             }));
 
-            const totalPages = Math.ceil(total / limit);
+           // const totalPages = Math.ceil(total / limit);
 
             return res.json({
                 data: mappedProducts,
-                pagination: {total, page,totalPages},
+                //pagination: {total, page,totalPages},
             });
         } catch (error) {
             return res.status(500).json({ message: "Error retrieving products", error });
@@ -364,7 +365,13 @@ export class ProductController {
 
             const totalPages = Math.ceil(total / limit);
 
-            return res.json({
+            console.log('Params received from query:', {
+                category: req.query.category,
+                subcategory: req.query.subcategory,
+                page: req.query.page,
+                limit: req.query.limit
+            });
+                return res.json({
                 products,
                 pagination: {
                     page,

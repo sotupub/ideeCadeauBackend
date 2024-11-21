@@ -30,4 +30,12 @@ export class encrypt {
   static compareResetCode(hashResetCode: string, resetCode: string) {
     return bcrypt.compareSync(resetCode, hashResetCode);
   }
+
+  static verifyToken(token: string) {
+    try {
+      return jwt.verify(token, JWT_SECRET);
+    } catch (error) {
+      return null; 
+    }
+  }
 }

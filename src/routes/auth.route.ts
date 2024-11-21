@@ -8,5 +8,6 @@ Router.post("/signup", AuthController.signup);
 Router.post("/forget-password", AuthController.sendPasswordResetCode);
 Router.post("/verify-reset-code", AuthController.verifyResetCode);
 Router.post("/reset-password", AuthController.resetPassword);
+Router.post("/verify-token", AuthController.verifyToken);
 
 export { Router as authRouter };

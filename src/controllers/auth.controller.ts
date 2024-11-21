@@ -10,6 +10,26 @@ dotenv.config({ path: 'config.env' });
 
 export class AuthController {
 
+  static async verifyToken(req: Request, res: Response): Promise<Response> {
+    const { token } = req.body;
+
+    if (!token) {
+      return res.status(400).json({ message: "Token is required" });
+    }
+
+    try {
+      const decodedPayload = encrypt.verifyToken(token);
+
+      if (!decodedPayload) {
+        return res.status(401).json({ message: "Invalid or expired token" });
+      }
+
+      return res.status(200).json({ message: "Token is valid", payload: decodedPayload });
+    } catch (error) {
+      return res.status(500).json({ message: "Error verifying token", error });
+    }
+  }
+
   static async signup(req: Request, res: Response) {
     const { firstname, lastname, email, password, role, phonenumber, address, city, zipCode, country } = req.body;
 
@@ -21,7 +41,7 @@ export class AuthController {
     if (email) {
       const emailRegex = /^\S+@\S+\.\S+$/;
       if (!emailRegex.test(email)) {
-        return res.status(400).json({ message: "Invalid email format" });
+        return res.status(400).json({ message: "Format email invalide" });
       }
 
       const existingEmail = await userRepository.findOneBy({ email });
@@ -33,7 +53,7 @@ export class AuthController {
 
     const existingPhone = await userRepository.findOneBy({ phonenumber });
     if (existingPhone) {
-      return res.status(400).json({ message: "Phonenumber already exists" });
+      return res.status(400).json({ message: "Numéro de télephone déja utilisé" });
     }
 
     if (password.length < 8) {
