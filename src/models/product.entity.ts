@@ -55,6 +55,9 @@ import { IsNumber, IsString } from "class-validator";
     @Column()
     stockAvailability: boolean;
 
+    @Column({nullable: true})
+    isTrending: boolean;
+
     @ManyToOne(() => Model, model => model.id)
     model: Model;
     

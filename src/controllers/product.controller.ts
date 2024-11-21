@@ -425,4 +425,79 @@ export class ProductController {
             return res.status(500).json({ message: "Internal server error" });
         }
     }
+
+    static async getRecentProducts(req: Request, res: Response): Promise<Response> {
+        const productRepository = AppDataSource.getRepository(Product);
+        try {
+          const products = await productRepository.createQueryBuilder('product')
+            .orderBy('product.createdAt', 'DESC')
+            .limit(8)
+            .select(['product.id', 'product.images', 'product.name', 'product.price', 'product.oldprice'])
+            .getMany();
+    
+          const mappedProducts = products.map(product => ({
+            id: product.id,
+            images: product.images.slice(0, 2), 
+            name: product.name,
+            price: product.price,
+            oldprice: product.oldprice
+          }));
+          return res.status(200).json(mappedProducts);
+        } catch (error) {
+          console.error('Error fetching recent products:', error);
+          return res.status(500).json({ message: "Internal server error" });
+        }
+      }
+
+      static async addTrendingProducts(req: Request, res: Response): Promise<Response> {
+        const { productIds } = req.body;
+    
+        if (!productIds || !Array.isArray(productIds)) {
+          return res.status(400).json({ message: "Product IDs are required and should be an array" });
+        }
+    
+        const productRepository = AppDataSource.getRepository(Product);
+    
+        try {
+          const products = await productRepository.findByIds(productIds);
+    
+          if (products.length !== productIds.length) {
+            return res.status(404).json({ message: "One or more products not found" });
+          }
+    
+          products.forEach(product => {
+            product.isTrending = true; 
+          });
+          await productRepository.save(products);
+
+          return res.status(200).json({ message: "Products marked as trending successfully" });
+        } catch (error) {
+          console.error('Error marking products as trending:', error);
+          return res.status(500).json({ message: "Internal server error" });
+        }
+      }
+      static async getTrendingProducts(req: Request, res: Response): Promise<Response> {
+        const productRepository = AppDataSource.getRepository(Product);
+    
+        try {
+          const products = await productRepository.find({
+            where: { isTrending: true },
+            select: ['id', 'images', 'name', 'price', 'oldprice']
+          });
+    
+          const mappedProducts = products.map(product => ({
+            id: product.id,
+            images: product.images.slice(0, 2), 
+            name: product.name,
+            price: product.price,
+            oldprice: product.oldprice
+          }));
+          return res.status(200).json(mappedProducts);
+        } catch (error) {
+          console.error('Error fetching trending products:', error);
+          return res.status(500).json({ message: "Internal server error" });
+        }
+      }
+    
+    
 }
