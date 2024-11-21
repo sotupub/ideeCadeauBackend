@@ -5,7 +5,7 @@ import { authorization } from "../middlewares/role.middleware";
 
 const Router = express.Router();
 
-Router.get('/best-sellers', OrderController.getTopSellers);
+Router.get('/best-sellers', authentification, authorization(["admin"]), OrderController.getTopSellers);
 Router.get('/monthly-sales', authentification, authorization(["admin"]),OrderController.getMonthlySalesStatistics);
 Router.post("/create", authentification, authorization(["client"]), OrderController.createOrder);
 Router.get("/all", authentification, authorization(["admin"]),OrderController.getAllOrders);
