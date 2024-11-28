@@ -1,5 +1,4 @@
-import express from "express";
-import { Application } from "express";
+import express, { Application } from "express";
 import dotenv from "dotenv";
 import { AppDataSource } from "./config/data-source";
 import routes from "./config/routes";
@@ -10,44 +9,73 @@ import http from 'http';
 import { Server } from 'socket.io';
 import fs from 'fs';
 import path from 'path';
+import compression from 'compression';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 
 dotenv.config({ path: 'config.env' });
 
 const app: Application = express();
 const server = http.createServer(app);
-const io = new Server(server, {
-  maxHttpBufferSize: 7000000 // 1MB
-});
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-const PORT: number = Number(process.env.PORT) || 3000;
-const SOCKET_PORT: number = 1234;
+const allowedOrigins = [
+    "http://localhost:3000",
+    "http://localhost:3001", 
+    "http://localhost:4000",
+    "http://54.37.40.39:3000",
+    "http://54.37.40.39:3001",
+    "http://54.37.40.39:4000"
+];
+
+const corsOptions = {
+    origin: function (origin: string | undefined, callback: (error: Error | null, allow?: boolean) => void) {
+        if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+    credentials: true,
+    optionsSuccessStatus: 200
+};
+
+// Apply CORS middleware before other middleware
+app.use(cors(corsOptions));
+
+// Security middleware
+app.use(helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
+
+// Compression middleware
+app.use(compression());
+
+// Rate limiting
+const limiter = rateLimit({
+    windowMs: 1 * 60 * 1000, // 15 minutes
+    max: 100, // limit each IP to 100 requests per windowMs
+    message: 'Too many requests from this IP, please try again after 15 minutes'
+});
+app.use(limiter);
+
+// Body parser with limits
+app.use(express.json({ limit: '100mb' }));
+app.use(express.urlencoded({ extended: true, limit: '100mb' }));
+
+const PORT: number = Number(process.env.PORT) || 8000;
+const SOCKET_PORT : number = Number(process.env.SOCKET_PORT) || 8000;
 const HOST: string = String(process.env.PGHOST);
 
 app.use(errorHandler);
 
-const allowedOrigins = ["http://localhost:3000", "http://localhost:3001", "http://localhost:4000"];
-
-const corsOptions = {
-  origin: (origin: any, callback: any) => {
-    if (allowedOrigins.indexOf(origin) !== -1 || !origin) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true,
-};
-
-app.use(cors(corsOptions));
 app.use(routes);
 
 // Ensure uploads directory exists
 if (!fs.existsSync('uploads')) {
   fs.mkdirSync('uploads');
 }
-console.log('Socket initialized');
 
 // Endpoint to serve image files
 const uploadsDir = path.join(__dirname, '..', 'uploads');
@@ -58,6 +86,16 @@ app.get('/uploads/:filename', (req, res) => {
 });
 
 // Handle Socket.IO connections
+const socketApp = express();
+const socketServer = http.createServer(socketApp);
+const io = new Server(socketServer, {
+  cors: {
+    origin: allowedOrigins,
+    methods: ["GET", "POST"]
+  },
+  maxHttpBufferSize: 7000000 // 1MB
+});
+
 io.on('connection', (socket) => {
   console.log('A user connected');
 
@@ -97,16 +135,26 @@ io.on('connection', (socket) => {
   });
 });
 
-// Start the server
+// Start the socket server on a different port
+try {
+  console.log("SOCKET_PORT", SOCKET_PORT);
+  
+  socketServer.listen(SOCKET_PORT, () => {
+    console.log(`Socket server is running on port ${SOCKET_PORT}`);
+  });
+} catch (error) {
+  console.error(`❌ Error starting socket server on port ${SOCKET_PORT}:`, error);
+}
+
+// Start the main server
 server.listen(PORT, async () => {
   try {
     await AppDataSource.initialize();
     console.log(`🗄️  Server Fire on http://${HOST}:${PORT}`);
     console.log("📦 Connected to the database successfully");
-    test();
+    // test(); // Assuming you have a test function
   } catch (error) {
     console.error("❌ Error during Data Source initialization:", error);
   }
   console.log(`Server is running on port ${PORT}`);
-  console.log(`Socket server is also running on port ${PORT}`);
 });

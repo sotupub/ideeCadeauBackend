@@ -6,6 +6,7 @@ import { SubCategory } from "../models/subcategory.entity";
 import { Model } from "../models/model.entity";
 import { OrderItem } from "../models/orderItem.entity";
 import { In, Like } from "typeorm";
+import { cacheService } from "../services/cache.service";
 
 export class ProductController {
     static async createProduct(req: Request, res: Response): Promise<Response> {
@@ -39,23 +40,36 @@ export class ProductController {
               }
 
               // Vérifier si les sous-catégories appartiennent aux catégories concernées
-              for (const subCategory of subCategories) {
-                const parentCategories = await subCategoryRepository
-                    .createQueryBuilder("subCategory")
-                    .leftJoinAndSelect("subCategory.categories", "category")
-                    .where("subCategory.id = :id", { id: subCategory.id })
-                    .getMany();
+              // Fetch all subcategory-category relationships in one query
+              const subCategoryCategories = await subCategoryRepository
+                  .createQueryBuilder("subCategory")
+                  .select(["subCategory.id", "category.id"])
+                  .innerJoin("subCategory.categories", "category")
+                  .where("subCategory.id IN (:...subCategoryIds)", { subCategoryIds: subCategoryIds })
+                  .andWhere("category.id IN (:...categoryIds)", { categoryIds: categoryIds })
+                  .getMany();
 
-                const parentCategoryIds = parentCategories.flatMap(subCat => subCat.categories.map(cat => cat.id));
+              // Create a map of subcategory IDs to their category IDs
+              const subCategoryMap = new Map<string, Set<string>>();
+              subCategoryCategories.forEach(subCat => {
+                  if (!subCategoryMap.has(subCat.id)) {
+                      subCategoryMap.set(subCat.id, new Set());
+                  }
+                  subCat.categories.forEach(cat => {
+                      subCategoryMap.get(subCat.id)?.add(cat.id);
+                  });
+              });
 
-                const isValidSubCategory = categoryIds.some((id: string) => parentCategoryIds.includes(id));
-
-                if (!isValidSubCategory) {
-                    console.log(`La sous-catégorie ${subCategory.id} n'appartient pas aux catégories fournies.`);
-                    return res.status(400).json({
-                        message: `Subcategory with id ${subCategory.id} does not belong to the provided categories`
-                    });
-                }
+              // Validate each subcategory
+              for (const subCategoryId of subCategoryIds) {
+                  const validCategories = subCategoryMap.get(subCategoryId);
+                  const isValid = validCategories && categoryIds.some((catId: string) => validCategories.has(catId));
+                  
+                  if (!isValid) {
+                      return res.status(400).json({
+                          message: `Subcategory with id ${subCategoryId} does not belong to the provided categories`
+                      });
+                  }
               }
             }
             const product = new Product();
@@ -76,43 +90,105 @@ export class ProductController {
             await productRepository.save(product);
 
             return res.status(201).json(product);
-        } catch (error) {
-            return res.status(500).json({ message: "Error creating product", error });
+        } catch (error: unknown) {
+            console.error('Error in createProduct:', error);
+            const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+            return res.status(500).json({ message: "Error creating product", error: errorMessage });
         }
     }
 
     static async getAllVisibleProducts(req: Request, res: Response): Promise<Response> {
-        const productRepository = AppDataSource.getRepository(Product);
-        const page = parseInt(req.query.page as string) || 1;
-        const limit = parseInt(req.query.limit as string) || 20;
-        const offset = (page - 1) * limit;
-
         try {
-            const [products, total] = await productRepository.findAndCount({
-                where: { visible: true },
-                //relations: ["categories", "subCategories"],
-                select: ["id", "images", "name", "price", "oldprice", "createdAt","description"],
-                skip: offset,
-                take: limit,
+            const CACHE_KEY = `visible_products`;
+
+            // Try to get from cache first
+            const cachedData = await cacheService.get(CACHE_KEY);
+            if (cachedData) {
+                return res.json(cachedData);
+            }
+
+            interface RawProduct {
+                id: string;
+                name: string;
+                price: number;
+                oldprice: number;
+                images: string | string[];
+                categories: string | null;
+                subcategories: string | null;
+            }
+
+            interface CategoryData {
+                id: string;
+                name: string;
+            }
+
+            // Use a single query with limited fields and no relations
+            const products = await AppDataSource
+                .createQueryBuilder()
+                .select([
+                    'p.id as id',
+                    'p.name as name',
+                    'p.price as price',
+                    'p.oldprice as oldprice',
+                    'p.images as images',
+                    'STRING_AGG(DISTINCT c.id || \':\' || c.name, \',\') as categories',
+                    'STRING_AGG(DISTINCT sc.id || \':\' || sc.name, \',\') as subcategories'
+                ])
+                .from('product', 'p')
+                .leftJoin('product_categories', 'pc', 'pc.productId = p.id')
+                .leftJoin('category', 'c', 'c.id = pc.categoryId')
+                .leftJoin('product_subcategories', 'psc', 'psc.productId = p.id')
+                .leftJoin('sub_category', 'sc', 'sc.id = psc.subCategoryId')
+                .where('p.visible = :visible', { visible: true })
+                .groupBy('p.id, p.name, p.price, p.oldprice, p.images')
+                .getRawMany<RawProduct>();
+
+            // Transform the aggregated data into the desired format
+            const mappedProducts = products.map(product => {
+                // Parse categories string into array of objects
+                const categories: CategoryData[] = product.categories ? product.categories.split(',').map((cat: string): CategoryData => {
+                    const [id, name] = cat.split(':');
+                    return { id, name };
+                }) : [];
+
+                // Parse subcategories string into array of objects
+                const subcategories: CategoryData[] = product.subcategories ? product.subcategories.split(',').map((subcat: string): CategoryData => {
+                    const [id, name] = subcat.split(':');
+                    return { id, name };
+                }) : [];
+
+                // Parse images string if it's stored as a string
+                let images: string[] = Array.isArray(product.images) ? product.images : [];
+                if (typeof product.images === 'string') {
+                    try {
+                        images = JSON.parse(product.images);
+                    } catch (e) {
+                        images = [];
+                    }
+                }
+
+                return {
+                    id: product.id,
+                    name: product.name,
+                    price: product.price,
+                    oldprice: product.oldprice,
+                    images: images.slice(0, 2),
+                    categories,
+                    subCategories: subcategories
+                };
             });
 
-            const mappedProducts = products.map(product => ({
-                id: product.id,
-                images: product.images.slice(0, 2), 
-                name: product.name,
-                price: product.price,
-                oldprice: product.oldprice,
-                description: product.description,
-                createdAt : product.createdAt
-            }));
-            const totalPages = Math.ceil(total / limit);
+            const response = {
+                data: mappedProducts
+            };
 
-            return res.json({
-                data: mappedProducts,
-                pagination: {total, page,totalPages},
-            });
-        } catch (error) {
-            return res.status(500).json({ message: "Error retrieving products", error });
+            // Store in Redis cache
+            await cacheService.set(CACHE_KEY, response, 300); // 5 minutes
+            return res.json(response);
+        } catch (error: unknown) {
+            console.error('Error in getAllVisibleProducts:', error);
+            const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+            return res.status(500).json({ message: "Error fetching products", error: errorMessage });
         }
     }
 
@@ -149,8 +225,10 @@ export class ProductController {
                 data: mappedProducts,
                 //pagination: {total, page,totalPages},
             });
-        } catch (error) {
-            return res.status(500).json({ message: "Error retrieving products", error });
+        } catch (error: unknown) {
+            console.error('Error in getAllProducts:', error);
+            const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+            return res.status(500).json({ message: "Error retrieving products", error: errorMessage });
         }
     }
 
@@ -196,21 +274,34 @@ export class ProductController {
                     return res.status(404).json({ message: "One or more subcategories not found" });
                 }
                 // Vérifier si les sous-catégories appartiennent aux catégories concernées
-                for (const subCategory of subCategories) {
-                    const parentCategories = await subCategoryRepository
-                        .createQueryBuilder("subCategory")
-                        .leftJoinAndSelect("subCategory.categories", "category")
-                        .where("subCategory.id = :id", { id: subCategory.id })
-                        .getMany();
-    
-                    const parentCategoryIds = parentCategories.flatMap(subCat => subCat.categories.map(cat => cat.id));
-    
-                    const isValidSubCategory = categoryIds.some((id: string) => parentCategoryIds.includes(id));
-    
-                    if (!isValidSubCategory) {
-                        console.log(`La sous-catégorie ${subCategory.id} n'appartient pas aux catégories fournies.`);
+                // Fetch all subcategory-category relationships in one query
+                const subCategoryCategories = await subCategoryRepository
+                    .createQueryBuilder("subCategory")
+                    .select(["subCategory.id", "category.id"])
+                    .innerJoin("subCategory.categories", "category")
+                    .where("subCategory.id IN (:...subCategoryIds)", { subCategoryIds: subCategoryIds })
+                    .andWhere("category.id IN (:...categoryIds)", { categoryIds: categoryIds })
+                    .getMany();
+
+                // Create a map of subcategory IDs to their category IDs
+                const subCategoryMap = new Map<string, Set<string>>();
+                subCategoryCategories.forEach(subCat => {
+                    if (!subCategoryMap.has(subCat.id)) {
+                        subCategoryMap.set(subCat.id, new Set());
+                    }
+                    subCat.categories.forEach(cat => {
+                        subCategoryMap.get(subCat.id)?.add(cat.id);
+                    });
+                });
+
+                // Validate each subcategory
+                for (const subCategoryId of subCategoryIds) {
+                    const validCategories = subCategoryMap.get(subCategoryId);
+                    const isValid = validCategories && categoryIds.some((catId: string) => validCategories.has(catId));
+                    
+                    if (!isValid) {
                         return res.status(400).json({
-                            message: `Subcategory with id ${subCategory.id} does not belong to the provided categories`
+                            message: `Subcategory with id ${subCategoryId} does not belong to the provided categories`
                         });
                     }
                 }
@@ -247,8 +338,10 @@ export class ProductController {
             await productRepository.save(product);
     
             return res.status(200).json(product);
-        } catch (error) {
-            return res.status(500).json({ message: "Error updating product", error });
+        } catch (error: unknown) {
+            console.error('Error in updateProduct:', error);
+            const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+            return res.status(500).json({ message: "Error updating product", error: errorMessage });
         }
     }
     
@@ -267,8 +360,10 @@ export class ProductController {
             await productRepository.remove(product);
 
             return res.status(204).json({ message: "Product deleted successfully" });
-        } catch (error) {
-            return res.status(500).json({ message: "Error deleting product", error });
+        } catch (error: unknown) {
+            console.error('Error in deleteProduct:', error);
+            const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+            return res.status(500).json({ message: "Error deleting product", error: errorMessage });
         }
     }
 
@@ -283,8 +378,10 @@ export class ProductController {
                 return res.status(404).json({ message: "Product not found" }); 
             }
             return res.json(product); 
-        } catch (error) {
-            return res.status(500).json({ message: "Error retrieving product", error }); 
+        } catch (error: unknown) {
+            console.error('Error in getProductById:', error);
+            const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+            return res.status(500).json({ message: "Error retrieving product", error: errorMessage });
         }
     }
 
@@ -317,8 +414,10 @@ export class ProductController {
           await productRepository.remove(products);
     
           return res.status(200).json({ message: "Products and associated order items deleted successfully", ids });
-        } catch (error) {
-            return res.status(500).json({ message: "Error deleting products", error });
+        } catch (error: unknown) {
+            console.error('Error in deleteMultipleProducts:', error);
+            const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+            return res.status(500).json({ message: "Error deleting products", error: errorMessage });
         }
     }
     static async getProductsByFilter(req: Request, res: Response) {
@@ -329,7 +428,14 @@ export class ProductController {
         const limit = parseInt(req.query.limit as string) || 20;
         try {
             const productRepository = AppDataSource.getRepository(Product);
-            const queryBuilder = productRepository.createQueryBuilder('product');
+            const queryBuilder = productRepository.createQueryBuilder('product')
+                .select([
+                    'product.id',
+                    'product.name',
+                    'product.price',
+                    'product.oldPrice',
+                    'product.images'
+                ]);
 
             if (categoryName) {
                 const categoryRepository = AppDataSource.getRepository(Category);
@@ -372,7 +478,13 @@ export class ProductController {
                 limit: req.query.limit
             });
                 return res.json({
-                products,
+                products: products.map(product => ({
+                    id: product.id,
+                    name: product.name,
+                    price: product.price,
+                    oldPrice: product.oldprice,
+                    images: product.images?.slice(0, 2) || []
+                })),
                 pagination: {
                     page,
                     limit,
@@ -380,9 +492,10 @@ export class ProductController {
                     totalPages
                 }
             });
-        } catch (error) {
-            console.error(error); 
-            return res.status(500).json({ error: 'Internal server error' });
+        } catch (error: unknown) {
+            console.error('Error in getProductsByFilter:', error);
+            const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+            return res.status(500).json({ message: "Internal server error", error: errorMessage });
         }
     }
     static async getProductsByName(req: Request, res: Response): Promise<Response> {
@@ -420,32 +533,46 @@ export class ProductController {
                 oldprice: product.oldprice
             }));
             return res.status(200).json(mappedProducts);
-        } catch (error) {
+        } catch (error: unknown) {
             console.error('Error fetching products by name:', error);
-            return res.status(500).json({ message: "Internal server error" });
+            const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+            return res.status(500).json({ message: "Internal server error", error: errorMessage });
         }
     }
 
     static async getRecentProducts(req: Request, res: Response): Promise<Response> {
-        const productRepository = AppDataSource.getRepository(Product);
+        const CACHE_KEY = 'recent_products';
         try {
-          const products = await productRepository.createQueryBuilder('product')
-            .orderBy('product.createdAt', 'DESC')
-            .limit(8)
-            .select(['product.id', 'product.images', 'product.name', 'product.price', 'product.oldprice'])
-            .getMany();
-    
-          const mappedProducts = products.map(product => ({
-            id: product.id,
-            images: product.images.slice(0, 2), 
-            name: product.name,
-            price: product.price,
-            oldprice: product.oldprice
-          }));
-          return res.status(200).json(mappedProducts);
-        } catch (error) {
-          console.error('Error fetching recent products:', error);
-          return res.status(500).json({ message: "Internal server error" });
+            // Try to get from cache first
+            const cachedData = await cacheService.get(CACHE_KEY);
+            if (cachedData) {
+                return res.json(cachedData);
+            }
+
+            const productRepository = AppDataSource.getRepository(Product);
+            const products = await productRepository
+                .createQueryBuilder("product")
+                .select(["product.id", "product.name", "product.price", "product.oldprice", "product.images"])
+                .orderBy("product.createdAt", "DESC")
+                .limit(8)
+                .cache(true, 300000) // TypeORM cache for 5 minutes
+                .getMany();
+
+            const mappedProducts = products.map(product => ({
+                id: product.id,
+                name: product.name,
+                price: product.price,
+                oldprice: product.oldprice,
+                images: product.images
+            }));
+
+            // Store in Redis cache
+            await cacheService.set(CACHE_KEY, mappedProducts, 300); // 5 minutes
+            return res.json(mappedProducts);
+        } catch (error: unknown) {
+            console.error('Error fetching recent products:', error);
+            const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+            return res.status(500).json({ message: "Internal server error", error: errorMessage });
         }
       }
 
@@ -471,33 +598,45 @@ export class ProductController {
           await productRepository.save(products);
 
           return res.status(200).json({ message: "Products marked as trending successfully" });
-        } catch (error) {
-          console.error('Error marking products as trending:', error);
-          return res.status(500).json({ message: "Internal server error" });
+        } catch (error: unknown) {
+            console.error('Error marking products as trending:', error);
+            const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+            return res.status(500).json({ message: "Internal server error", error: errorMessage });
         }
       }
       static async getTrendingProducts(req: Request, res: Response): Promise<Response> {
-        const productRepository = AppDataSource.getRepository(Product);
-    
+        const CACHE_KEY = 'trending_products';
         try {
-          const products = await productRepository.find({
-            where: { isTrending: true },
-            select: ['id', 'images', 'name', 'price', 'oldprice']
-          });
-    
-          const mappedProducts = products.map(product => ({
-            id: product.id,
-            images: product.images.slice(0, 2), 
-            name: product.name,
-            price: product.price,
-            oldprice: product.oldprice
-          }));
-          return res.status(200).json(mappedProducts);
-        } catch (error) {
-          console.error('Error fetching trending products:', error);
-          return res.status(500).json({ message: "Internal server error" });
+            // Try to get from cache first
+            const cachedData = await cacheService.get(CACHE_KEY);
+            if (cachedData) {
+                return res.json(cachedData);
+            }
+
+            // If not in cache, get from database
+            const productRepository = AppDataSource.getRepository(Product);
+            const products = await productRepository
+                .createQueryBuilder("Product")
+                .select(["Product.id", "Product.name", "Product.price", "Product.oldprice", "Product.images"])
+                .where("Product.isTrending = :trending", { trending: true })
+                .cache(true, 300000) // TypeORM cache for 5 minutes
+                .getMany();
+
+            const mappedProducts = products.map(product => ({
+                id: product.id,
+                name: product.name,
+                price: product.price,
+                oldprice: product.oldprice,
+                images: product.images
+            }));
+
+            // Store in Redis cache
+            await cacheService.set(CACHE_KEY, mappedProducts, 300); // 5 minutes
+            return res.json(mappedProducts);
+        } catch (error: unknown) {
+            console.error('Error fetching trending products:', error);
+            const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+            return res.status(500).json({ message: "Internal server error", error: errorMessage });
         }
       }
-    
-    
 }

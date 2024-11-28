@@ -239,7 +239,7 @@ export class OrderController {
         const subject = "Order Shipped";
         const text = `Nous espérons que votre commande a bien été livrée 
         et attendons avec impatience votre avis.
-        Veuillez laisser votre avis ici : http://localhost:3000/review/${order.id}`;
+        Veuillez laisser votre avis ici : http://54.37.40.39:3000/review/${order.id}`;
         await EmailService.sendEmail(email, subject, text);
       }
 
