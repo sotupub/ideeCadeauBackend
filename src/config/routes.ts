@@ -7,6 +7,7 @@ import { modelRouter } from '../routes/model.route';
 import { productRouter } from '../routes/product.route';
 import { orderRouter } from '../routes/order.route';
 import { reviewRouter } from '../routes/review.route';
+import { widgetRouter } from '../routes/widget.route';
 
 const router = express.Router();
 
@@ -18,6 +19,7 @@ router.use("/model", modelRouter);
 router.use("/product", productRouter);
 router.use("/order", orderRouter);
 router.use("/review", reviewRouter);
+router.use("/widget", widgetRouter);
 
 
 export default router;

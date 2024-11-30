@@ -7,6 +7,9 @@ import { OrderItem } from "../models/orderItem.entity";
 import { classToPlain } from "class-transformer";
 import EmailService from "../helpers/sendemail";
 import { EOrder } from "../models/enums/EOrder";
+import handlebars from "handlebars"; 
+import fs from "fs";
+import path from "path";
 
 export class OrderController {
   static async createOrder(req: Request, res: Response): Promise<Response> {
@@ -110,7 +113,7 @@ export class OrderController {
 
     try {
       const order = await orderRepository.findOne({
-        where: { id, status: EOrder.COMPLETED },
+        where: { id, status: EOrder.DELIVERED },
         relations: ["orderItems", "orderItems.product", "user"],
       });
 
@@ -234,7 +237,7 @@ export class OrderController {
 
       await orderRepository.save(order);
 
-      if (status === "Complétée") {
+      if (status === "Livrée") {
         const email = order.user.email;
         const subject = "Order Shipped";
         const text = `Nous espérons que votre commande a bien été livrée 

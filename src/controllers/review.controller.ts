@@ -25,14 +25,14 @@ export class ReviewController {
           id: orderItemId,
           order: {
             user: { id: userId },
-            status: EOrder.COMPLETED
+            status: EOrder.DELIVERED
           }
         },
         relations: ["order", "product", "reviews"],
       });
 
       if (!orderItem) {
-        return res.status(403).json({ message: "You can only review products you have purchased with completed orders" });
+        return res.status(403).json({ message: "You can only review products you have purchased with delivered orders" });
       }
 
       const existingReview = await reviewRepository.findOne({
