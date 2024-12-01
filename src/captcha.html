@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>reCAPTCHA Test</title>
+  <script src="https://www.google.com/recaptcha/api.js?render=6Lcdko4qAAAAAFupr_nZWafHCXrZmBfxNumiRaj3"></script>
+</head>
+<body>
+  <form id="captchaForm">
+    <button type="submit">Get Captcha Token</button>
+  </form>
+
+  <script>
+    document.getElementById('captchaForm').addEventListener('submit', function(event) {
+      event.preventDefault();
+      grecaptcha.ready(function() {
+        grecaptcha.execute('6Lcdko4qAAAAAFupr_nZWafHCXrZmBfxNumiRaj3', {action: 'submit'}).then(function(token) {
+          console.log('Captcha Token:', token);
+          alert('Captcha Token: ' + token);
+        });
+      });
+    });
+  </script>
+</body>
+</html>

@@ -8,6 +8,8 @@ import { productRouter } from '../routes/product.route';
 import { orderRouter } from '../routes/order.route';
 import { reviewRouter } from '../routes/review.route';
 import { widgetRouter } from '../routes/widget.route';
+import { contactRouter } from '../routes/contact.route';
+import { devisRouter } from '../routes/devis.route';
 
 const router = express.Router();
 
@@ -20,6 +22,8 @@ router.use("/product", productRouter);
 router.use("/order", orderRouter);
 router.use("/review", reviewRouter);
 router.use("/widget", widgetRouter);
+router.use("/contact", contactRouter);
+router.use("/devis", devisRouter);
 
 
 export default router;

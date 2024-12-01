@@ -10,6 +10,8 @@ import { Order } from "../models/order.entity";
 import { OrderItem } from "../models/orderItem.entity";
 import { Review } from "../models/review.entity";
 import { Widget } from "../models/widget.entity";
+import { Contact } from "../models/contact.entity";
+import { Devis } from "../models/devis.entity";
 
 dotenv.config({ path: 'config.env' });
 
@@ -22,7 +24,7 @@ export const AppDataSource = new DataSource({
     database: process.env.DB_NAME,
     synchronize: true,
     logging: true,
-    entities: [User, Category, SubCategory, Product, Model, Order, OrderItem, Review, Widget], 
+    entities: [User, Category, SubCategory, Product, Model, Order, OrderItem, Review, Widget, Contact, Devis], 
     migrations: [__dirname + "/../migrations/*.ts"],
     subscribers: [],
 });

@@ -5,10 +5,10 @@ import { WidgetController } from "../controllers/widget.controller";
 
 const Router = express.Router();
 
-Router.post("/create", WidgetController.createWidget);
+Router.post("/create",authentification, authorization(["admin"]), WidgetController.createWidget);
 Router.get("/getall", WidgetController.getAllWidgets);
-Router.put("/update/:id", WidgetController.updateWidget);
-Router.delete("/delete", WidgetController.deleteMultipleWidgets);
+Router.put("/update/:id",authentification, authorization(["admin"]), WidgetController.updateWidget);
+Router.delete("/delete",authentification, authorization(["admin"]), WidgetController.deleteMultipleWidgets);
 Router.get("/:id", WidgetController.getWidgetById);
 
 
