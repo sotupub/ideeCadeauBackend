@@ -1,7 +1,7 @@
 import nodemailer from 'nodemailer';
 
 class EmailService {
-   static async sendEmail(email: string, subject: string, text: string): Promise<void> {
+   static async sendEmail(email: string, subject: string, html: string): Promise<void> {
 	const transporter = nodemailer.createTransport({
 	  service: 'Gmail',
 	  auth: {
@@ -14,7 +14,7 @@ class EmailService {
 	  from: process.env.SMTP_USER,
 	  to: email,
 	  subject: subject,
-	  text: text,
+	  html: html,
 	};
 
 	await transporter.sendMail(mailOptions);

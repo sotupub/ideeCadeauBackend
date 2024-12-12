@@ -62,10 +62,17 @@ export class OrderController {
       await orderRepository.save(order);
 
       const email = user.email;
-      const subject = "Order Confirmation";
-      const text = `Votre commande a été passée avec succès. Numéro de la commande: ${order.id}`;
-      await EmailService.sendEmail(email, subject, text);
-      //console.log(order);
+
+      const subject = "Commande créée avec succes!";
+      const templatePath = path.join(__dirname, "../templates/order-pending.html");
+      const templateSource = fs.readFileSync(templatePath, "utf-8");
+      const template = handlebars.compile(templateSource);
+
+      const htmlContent = template({
+        orderId: order.id,
+      });
+
+      await EmailService.sendEmail(email, subject, htmlContent);
 
       return res.status(201).json(order);
     } catch (error) {
@@ -237,15 +244,33 @@ export class OrderController {
 
       await orderRepository.save(order);
 
-      if (status === "Livrée") {
-        const email = order.user.email;
-        const subject = "Order Shipped";
-        const text = `Nous espérons que votre commande a bien été livrée 
-        et attendons avec impatience votre avis.
-        Veuillez laisser votre avis ici : http://54.37.40.39:3000/review/${order.id}`;
-        await EmailService.sendEmail(email, subject, text);
-      }
+      const email = order.user.email;
 
+      if (status === "Livrée") {
+        const subject = "Votre commande a été livrée !";
+      const templatePath = path.join(__dirname, "../templates/order-delivered.html");
+      const templateSource = fs.readFileSync(templatePath, "utf-8");
+      const template = handlebars.compile(templateSource);
+      const htmlContent = template({
+        reviewLink: `http://54.37.40.39:3000/review/${order.id}`,
+      });
+      await EmailService.sendEmail(email, subject, htmlContent);
+      } else if (status === "Confirmée") {
+        const subject = "Confirmation de votre commande";
+        const templatePath = path.join(__dirname, "../templates/order-confirmed.html");
+        const templateSource = fs.readFileSync(templatePath, "utf-8");
+        const template = handlebars.compile(templateSource);
+        const htmlContent = template({});
+        await EmailService.sendEmail(email, subject, htmlContent);
+      }  else if (status === "Expédiée") {
+        const subject = "Commande expédiée";
+        const templatePath = path.join(__dirname, "../templates/order-shipped.html");
+        const templateSource = fs.readFileSync(templatePath, "utf-8");
+        const template = handlebars.compile(templateSource);
+        const htmlContent = template({});
+        await EmailService.sendEmail(email, subject, htmlContent);
+      }
+  
       const orderResponse = classToPlain(order); // Convertit l'entité en objet sans références circulaires
 
 
