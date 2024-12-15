@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn } from "typeorm";
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn, JoinColumn } from "typeorm";
 import { User } from "./user.entity";
 import { Product } from "./product.entity";
 import { OrderItem } from "./orderItem.entity";
@@ -28,6 +28,7 @@ export class Review {
   user: User;
 
   @ManyToOne(() => Product, (product) => product.reviews)
+  @JoinColumn({ name: "productId" })
   product: Product;
 
   @ManyToOne(() => OrderItem, (orderItem) => orderItem.reviews)

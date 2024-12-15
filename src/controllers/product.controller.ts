@@ -7,6 +7,8 @@ import { Model } from "../models/model.entity";
 import { OrderItem } from "../models/orderItem.entity";
 import { In, Like } from "typeorm";
 import { cacheService } from "../services/cache.service";
+import { Review } from "../models/review.entity";
+import { EReview } from "../models/enums/EReview";
 
 export class ProductController {
     static async createProduct(req: Request, res: Response): Promise<Response> {
@@ -115,6 +117,7 @@ export class ProductController {
                 images: string | string[];
                 categories: string | null;
                 subcategories: string | null;
+                averagerating: number;
             }
 
             interface CategoryData {
@@ -130,6 +133,7 @@ export class ProductController {
                     'p.name as name',
                     'p.price as price',
                     'p.oldprice as oldprice',
+                    'p."averageRating" as averageRating',
                     'p.images as images',
                     'STRING_AGG(DISTINCT c.id || \':\' || c.name, \',\') as categories',
                     'STRING_AGG(DISTINCT sc.id || \':\' || sc.name, \',\') as subcategories'
@@ -140,11 +144,16 @@ export class ProductController {
                 .leftJoin('product_subcategories', 'psc', 'psc.productId = p.id')
                 .leftJoin('sub_category', 'sc', 'sc.id = psc.subCategoryId')
                 .where('p.visible = :visible', { visible: true })
-                .groupBy('p.id, p.name, p.price, p.oldprice, p.images')
+                .groupBy('p.id, p.name, p.price, p.oldprice, p."averageRating", p.images')
                 .getRawMany<RawProduct>();
+
+                console.log('Fetched products:', products); // Log pour vérifier les données avant transformation
+
 
             // Transform the aggregated data into the desired format
             const mappedProducts = products.map(product => {
+                console.log('averageRating',product.averagerating); // Ajoutez ceci pour vérifier la valeur
+
                 // Parse categories string into array of objects
                 const categories: CategoryData[] = product.categories ? product.categories.split(',').map((cat: string): CategoryData => {
                     const [id, name] = cat.split(':');
@@ -172,6 +181,7 @@ export class ProductController {
                     name: product.name,
                     price: product.price,
                     oldprice: product.oldprice,
+                    averageRating: product.averagerating,
                     images: images.slice(0, 2),
                     categories,
                     subCategories: subcategories
@@ -574,69 +584,53 @@ export class ProductController {
             const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
             return res.status(500).json({ message: "Internal server error", error: errorMessage });
         }
-      }
+    }
 
-      static async addTrendingProducts(req: Request, res: Response): Promise<Response> {
-        const { productIds } = req.body;
-    
-        if (!productIds || !Array.isArray(productIds)) {
-          return res.status(400).json({ message: "Product IDs are required and should be an array" });
-        }
-    
+    static async updateAverageRating(productId: string): Promise<void> {
+        console.log(`Updating average rating for product with ID: ${productId}`);
+        const reviewRepository = AppDataSource.getRepository(Review);
         const productRepository = AppDataSource.getRepository(Product);
     
-        try {
-          const products = await productRepository.findByIds(productIds);
+        // Calculer la moyenne des reviews approuvés
+        const { average } = await reviewRepository
+            .createQueryBuilder("review")
+            .select("AVG(review.rating)", "average")
+            .where("review.product = :productId", { productId })
+            .andWhere("review.status = :status", { status: EReview.APPROVED })
+            .getRawOne();
+
+            console.log(`Average rating for product with ID ${productId}:`, average);
     
-          if (products.length !== productIds.length) {
-            return res.status(404).json({ message: "One or more products not found" });
-          }
+        // Mettre à jour la moyenne dans le produit
+        await productRepository.update(productId, {
+            averageRating: average || 0, // Par défaut 0 si aucun avis approuvé
+        });
+    }
+
+    static async verifyAverageRating(productId: string) {
+        const reviewRepository = AppDataSource.getRepository(Review);
+        const productRepository = AppDataSource.getRepository(Product);
     
-          products.forEach(product => {
-            product.isTrending = true; 
-          });
-          await productRepository.save(products);
-
-          return res.status(200).json({ message: "Products marked as trending successfully" });
-        } catch (error: unknown) {
-            console.error('Error marking products as trending:', error);
-            const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-            return res.status(500).json({ message: "Internal server error", error: errorMessage });
+        // Calculer la moyenne depuis les reviews approuvés
+        const { average } = await reviewRepository
+            .createQueryBuilder("review")
+            .select("AVG(review.rating)", "average")
+            .where("review.product = :productId", { productId })
+            .andWhere("review.status = :status", { status: EReview.APPROVED })
+            .getRawOne();
+    
+        // Récupérer la moyenne enregistrée dans le produit
+        const product = await productRepository.findOne({ where: { id: productId } });
+    
+        console.log("Moyenne calculée :", average || 0);
+        console.log("Moyenne enregistrée :", product?.averageRating);
+    
+        if (parseFloat(String(average || 0)) === parseFloat(String(product?.averageRating || "0"))) {
+            console.log("✅ La moyenne est correcte !");
+        } else {
+            console.log("❌ La moyenne est incorrecte !");
         }
-      }
-      static async getTrendingProducts(req: Request, res: Response): Promise<Response> {
-        const CACHE_KEY = 'trending_products';
-        try {
-            // Try to get from cache first
-            const cachedData = await cacheService.get(CACHE_KEY);
-            if (cachedData) {
-                return res.json(cachedData);
-            }
+    }
 
-            // If not in cache, get from database
-            const productRepository = AppDataSource.getRepository(Product);
-            const products = await productRepository
-                .createQueryBuilder("Product")
-                .select(["Product.id", "Product.name", "Product.price", "Product.oldprice", "Product.images"])
-                .where("Product.isTrending = :trending", { trending: true })
-                .cache(true, 300000) // TypeORM cache for 5 minutes
-                .getMany();
-
-            const mappedProducts = products.map(product => ({
-                id: product.id,
-                name: product.name,
-                price: product.price,
-                oldprice: product.oldprice,
-                images: product.images
-            }));
-
-            // Store in Redis cache
-            await cacheService.set(CACHE_KEY, mappedProducts, 300); // 5 minutes
-            return res.json(mappedProducts);
-        } catch (error: unknown) {
-            console.error('Error fetching trending products:', error);
-            const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-            return res.status(500).json({ message: "Internal server error", error: errorMessage });
-        }
-      }
+      
 }

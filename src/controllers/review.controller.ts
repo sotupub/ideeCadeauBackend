@@ -5,6 +5,8 @@ import { OrderItem } from "../models/orderItem.entity";
 import { EOrder } from "../models/enums/EOrder";
 import { EReview } from "../models/enums/EReview";
 import { User } from "../models/user.entity";
+import { Product } from "../models/product.entity";
+import { ProductController } from "./product.controller";
 
 export class ReviewController {
   static async createReview(req: Request, res: Response): Promise<Response> {
@@ -78,6 +80,9 @@ export class ReviewController {
       review.product = productId;
       review.status = EReview.APPROVED;
 
+      await ProductController.updateAverageRating(productId);
+      await ProductController.verifyAverageRating(productId);
+
       await reviewRepository.save(review);
 
       return res.status(201).json(review);
@@ -122,15 +127,22 @@ export class ReviewController {
     const reviewRepository = AppDataSource.getRepository(Review);
 
     try {
-      const review = await reviewRepository.findOne({ where: { id: reviewId } });
+      const review = await reviewRepository.findOne({ 
+        where: { id: reviewId },
+        relations: ["product"],
+      });
 
       if (!review) {
         return res.status(404).json({ message: "Review not found" });
       }
 
-      review.status = status;
-
+      review.status = status;    
       await reviewRepository.save(review);
+
+      await ProductController.updateAverageRating(review.product.id);
+      await ProductController.verifyAverageRating(review.product.id);
+
+
 
       return res.status(200).json(review);
     } catch (error) {
@@ -157,4 +169,6 @@ export class ReviewController {
       return res.status(500).json({ message: "Error retrieving reviews", error });
     }
   }
+
+
 }

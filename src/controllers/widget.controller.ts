@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { Product } from "../models/product.entity";
 import { AppDataSource } from "../config/data-source";
 import { Widget } from "../models/widget.entity";
+import { cacheService } from "../services/cache.service";
 
 export class WidgetController {
     static async createWidget(req: Request, res: Response): Promise<Response> {
@@ -26,7 +27,7 @@ export class WidgetController {
       
             await widgetRepository.save(widget);
       
-            return res.status(201).json(widget);
+            return res.status(201).json();
           } catch (error) {
             console.error('Error creating widget:', error);
             return res.status(500).json({ message: "Internal server error" });
@@ -36,9 +37,7 @@ export class WidgetController {
     static async getAllWidgets(req: Request, res: Response): Promise<Response> {
         const widgetRepository = AppDataSource.getRepository(Widget);
             try {
-              const widgets = await widgetRepository.find({
-                relations: ['products']
-              });     
+              const widgets = await widgetRepository.find();     
               return res.status(200).json(widgets);
             } catch (error) {
               console.error('Error fetching widgets:', error);
@@ -46,26 +45,77 @@ export class WidgetController {
         }
     }
 
-    static async getWidgetById(req: Request, res: Response): Promise<Response> {
-        const { id } = req.params;
-        const widgetRepository = AppDataSource.getRepository(Widget);
-    
-        try {
-          const widget = await widgetRepository.findOne({
-            where: { id },
-            relations: ['products'] 
-          });
-    
-          if (!widget) {
-            return res.status(404).json({ message: "Widget not found" });
-          }
-    
-          return res.status(200).json(widget);
-        } catch (error) {
-          console.error('Error fetching widget by ID:', error);
-          return res.status(500).json({ message: "Internal server error" });
-        }
+    static async getAllVisibleWidgets(req: Request, res: Response): Promise<Response> {
+      const widgetRepository = AppDataSource.getRepository(Widget);
+
+    try {
+      const CACHE_KEY = `visible_widgets`;
+
+      // Try to get from cache first
+      const cachedData = await cacheService.get(CACHE_KEY);
+      if (cachedData) {
+        return res.json(cachedData);
+      }
+
+      const widgets = await widgetRepository.find({
+        where: { visible: true },
+        select: ['id', 'name', 'type']
+      });
+
+      await cacheService.set(CACHE_KEY, widgets, 300); // 5 minutes
+      return res.status(200).json(widgets);
+    } catch (error) {
+      console.error('Error fetching visible widgets:', error);
+      return res.status(500).json({ message: "Internal server error" });
     }
+  }
+
+  static async getWidgetById(req: Request, res: Response): Promise<Response> {
+    const { id } = req.params;
+    const widgetRepository = AppDataSource.getRepository(Widget);
+
+    try {
+      const CACHE_KEY = `widgets_detail_${id}`;
+
+      // Try to get from cache first
+      const cachedData = await cacheService.get(CACHE_KEY);
+      if (cachedData) {
+        return res.json(cachedData);
+      }
+
+      const widget = await widgetRepository.findOne({
+        where: { id },
+        relations: ['products', 'products.categories', 'products.subCategories']
+      });
+
+      if (!widget) {
+        return res.status(404).json({ message: "Widget not found" });
+      }
+
+      const products = widget.products.map(product => ({
+        id: product.id,
+        name: product.name,
+        price: product.price,
+        oldprice: product.oldprice,
+        images: product.images.length > 0 ? [product.images[0]] : [],
+        categories: product.categories,
+        subCategories: product.subCategories
+      }));
+
+      const widgets ={
+        id: widget.id,
+        name: widget.name,
+        type: widget.type,
+        visible: widget.visible,
+        products: products
+      }
+      await cacheService.set(CACHE_KEY, widgets, 300); // 5 minutes
+      return res.status(200).json(widgets);
+    } catch (error) {
+      console.error('Error fetching widget by ID:', error);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  }
 
   static async updateWidget(req: Request, res: Response): Promise<Response> {
     const { id } = req.params;
@@ -108,7 +158,7 @@ export class WidgetController {
 
       await widgetRepository.save(widget);
 
-      return res.status(200).json(widget);
+      return res.status(200).json();
     } catch (error) {
       console.error('Error updating widget:', error);
       return res.status(500).json({ message: "Internal server error" });

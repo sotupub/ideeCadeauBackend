@@ -4,7 +4,7 @@ import { Product } from "./product.entity";
 
 @Entity()
 export class Widget {
-    @PrimaryGeneratedColumn("uuid")
+    @PrimaryGeneratedColumn()
     id: string;
 
     @Column()
