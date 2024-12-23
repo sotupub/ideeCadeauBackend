@@ -9,6 +9,7 @@ import { In, Like } from "typeorm";
 import { cacheService } from "../services/cache.service";
 import { Review } from "../models/review.entity";
 import { EReview } from "../models/enums/EReview";
+import { EOption } from "../models/enums/EOption";
 
 export class ProductController {
     static async createProduct(req: Request, res: Response): Promise<Response> {
@@ -86,7 +87,7 @@ export class ProductController {
             product.visible = visible;
             product.stockAvailability = stockAvailability;
             product.oldprice = oldprice;
-            product.options = options;
+            product.options = options.map((option: string) => EOption[option as keyof typeof EOption]);
             product.createdAt = new Date();
 
             await productRepository.save(product);
@@ -341,7 +342,7 @@ export class ProductController {
             if (stockAvailability !== undefined) {
                 product.stockAvailability = stockAvailability;
             }
-            if (options !== undefined) {
+            if (options) {
                 product.options = options;
             }
 

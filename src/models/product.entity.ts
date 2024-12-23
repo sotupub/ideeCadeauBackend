@@ -5,6 +5,7 @@ import { Model } from "./model.entity";
 import { OrderItem } from "./orderItem.entity";
 import { Review } from "./review.entity";
 import { IsNumber, IsString } from "class-validator";
+import { EOption } from "./enums/EOption";
   
   @Entity()
   export class Product {
@@ -68,8 +69,13 @@ import { IsNumber, IsString } from "class-validator";
     @OneToMany(() => Review, (review) => review.product)
     reviews: Review[];
 
-    @Column({ type: "varchar", length: 255, nullable: true })
-    options?: string;
+    @Column({
+      type: "enum",
+      enum: EOption,
+      array: true,
+      default: [EOption.TEXTE],
+    })
+    options: EOption[];
 
     @Column("text", { array: true })
     images: string[];  

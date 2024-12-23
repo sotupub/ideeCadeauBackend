@@ -27,4 +27,7 @@ export class OrderItem {
 
   @Column({ type: "varchar", length: 40000, nullable: true })
   image?: string;
+
+  @Column({nullable: true})
+  texte?: string;
 }
