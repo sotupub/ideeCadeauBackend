@@ -102,7 +102,11 @@ export class ProductController {
 
     static async getAllVisibleProducts(req: Request, res: Response): Promise<Response> {
         try {
-            const CACHE_KEY = `visible_products`;
+            const CHUNK_SIZE = 5;
+            const offset = parseInt(req.query.offset as string) || 0;
+            const limit = parseInt(req.query.limit as string) || CHUNK_SIZE;
+
+            const CACHE_KEY = `visible_products_${offset}_${limit}`;
 
             // Try to get from cache first
             const cachedData = await cacheService.get(CACHE_KEY);
@@ -110,23 +114,17 @@ export class ProductController {
                 return res.json(cachedData);
             }
 
-            interface RawProduct {
-                id: string;
-                name: string;
-                price: number;
-                oldprice: number;
-                images: string | string[];
-                categories: string | null;
-                subcategories: string | null;
-                averagerating: number;
-            }
+            // Get total count
+            const totalCount = await AppDataSource
+                .createQueryBuilder()
+                .select('COUNT(DISTINCT p.id)', 'count')
+                .from('product', 'p')
+                .where('p.visible = :visible', { visible: true })
+                .getRawOne();
 
-            interface CategoryData {
-                id: string;
-                name: string;
-            }
+            const total = parseInt(totalCount.count);
 
-            // Use a single query with limited fields and no relations
+            // Fetch products with stream
             const products = await AppDataSource
                 .createQueryBuilder()
                 .select([
@@ -146,60 +144,73 @@ export class ProductController {
                 .leftJoin('sub_category', 'sc', 'sc.id = psc.subCategoryId')
                 .where('p.visible = :visible', { visible: true })
                 .groupBy('p.id, p.name, p.price, p.oldprice, p."averageRating", p.images')
-                .getRawMany<RawProduct>();
+                .orderBy('p.id', 'ASC')
+                .offset(offset)
+                .limit(limit)
+                .getRawMany();
 
-                console.log('Fetched products:', products); // Log pour vérifier les données avant transformation
+            // Process products in batches
+            const processedProducts = [];
+            for (const product of products) {
+                try {
+                    // Process categories
+                    const categories = product.categories ?
+                        product.categories.split(',').map((cat: string) => {
+                            const [id, name] = cat.split(':');
+                            return { id, name };
+                        }) : [];
 
+                    // Process subcategories
+                    const subcategories = product.subcategories ?
+                        product.subcategories.split(',').map((subcat: string) => {
+                            const [id, name] = subcat.split(':');
+                            return { id, name };
+                        }) : [];
 
-            // Transform the aggregated data into the desired format
-            const mappedProducts = products.map(product => {
-                console.log('averageRating',product.averagerating); // Ajoutez ceci pour vérifier la valeur
-
-                // Parse categories string into array of objects
-                const categories: CategoryData[] = product.categories ? product.categories.split(',').map((cat: string): CategoryData => {
-                    const [id, name] = cat.split(':');
-                    return { id, name };
-                }) : [];
-
-                // Parse subcategories string into array of objects
-                const subcategories: CategoryData[] = product.subcategories ? product.subcategories.split(',').map((subcat: string): CategoryData => {
-                    const [id, name] = subcat.split(':');
-                    return { id, name };
-                }) : [];
-
-                // Parse images string if it's stored as a string
-                let images: string[] = Array.isArray(product.images) ? product.images : [];
-                if (typeof product.images === 'string') {
-                    try {
-                        images = JSON.parse(product.images);
-                    } catch (e) {
-                        images = [];
+                    // Process images
+                    let images: string[] = [];
+                    if (typeof product.images === 'string') {
+                        try {
+                            images = JSON.parse(product.images).slice(0, 2);
+                        } catch (e) {
+                            console.warn(`Failed to parse images for product ${product.id}:`, e);
+                        }
+                    } else if (Array.isArray(product.images)) {
+                        images = product.images.slice(0, 2);
                     }
-                }
 
-                return {
-                    id: product.id,
-                    name: product.name,
-                    price: product.price,
-                    oldprice: product.oldprice,
-                    averageRating: product.averagerating,
-                    images: images.slice(0, 2),
-                    categories,
-                    subCategories: subcategories
-                };
-            });
+                    processedProducts.push({
+                        id: product.id,
+                        name: product.name,
+                        price: product.price,
+                        oldprice: product.oldprice,
+                        averageRating: product.averagerating,
+                        images,
+                        categories,
+                        subCategories: subcategories
+                    });
+                } catch (error) {
+                    console.error(`Error processing product ${product.id}:`, error);
+                }
+            }
 
             const response = {
-                data: mappedProducts
+                data: processedProducts,
+                hasMoreProducts: offset + limit < total,
+                total
             };
 
             // Store in Redis cache
             await cacheService.set(CACHE_KEY, response, 300); // 5 minutes
             return res.json(response);
+
         } catch (error: unknown) {
             console.error('Error in getAllVisibleProducts:', error);
             const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-            return res.status(500).json({ message: "Error fetching products", error: errorMessage });
+            return res.status(500).json({
+                message: "Error fetching products",
+                error: errorMessage
+            });
         }
     }
 
@@ -219,7 +230,7 @@ export class ProductController {
 
             const mappedProducts = products.map(product => ({
                 id: product.id,
-                images: product.images,
+                images: product.images.length > 0 ? [product.images[0]] : [],
                 name: product.name,
                 price: product.price,
                 stock: product.stock,

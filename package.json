@@ -4,7 +4,12 @@
   "description": "",
   "main": "src/server.ts",
   "scripts": {
-    "dev": "npx nodemon",
+    "dev": "nodemon src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "dev:prod": "cp .env.production config.env && nodemon src/server.ts",
+    "build:prod": "cp .env.production config.env && tsc",
+    "start:prod": "cp .env.production config.env && node dist/server.js",
     "typeorm": "typeorm-ts-node-commonjs",
     "migration": " npm run typeorm migration:run -- -d ./src/config/data-source.ts"
   },

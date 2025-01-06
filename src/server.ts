@@ -86,65 +86,65 @@ app.get('/uploads/:filename', (req, res) => {
 });
 
 // Handle Socket.IO connections
-const socketApp = express();
-const socketServer = http.createServer(socketApp);
-const io = new Server(socketServer, {
-  cors: {
-    origin: allowedOrigins,
-    methods: ["GET", "POST"]
-  },
-  maxHttpBufferSize: 7000000 // 1MB
-});
+// const socketApp = express();
+// const socketServer = http.createServer(socketApp);
+// const io = new Server(socketServer, {
+//   cors: {
+//     origin: allowedOrigins,
+//     methods: ["GET", "POST"]
+//   },
+//   maxHttpBufferSize: 7000000 // 1MB
+// });
 
-io.on('connection', (socket) => {
-  console.log('A user connected');
+// io.on('connection', (socket) => {
+//   console.log('A user connected');
 
-  socket.on('upload', (data, callback) => {
-    const { json, png, productId, userId } = data;
-    const timestamp = new Date().toISOString().replace(/[-:.]/g, '');
-    try {
+//   socket.on('upload', (data, callback) => {
+//     const { json, png, productId, userId } = data;
+//     const timestamp = new Date().toISOString().replace(/[-:.]/g, '');
+//     try {
 
-      // Save JSON file
-      const jsonFilePath = path.join('uploads', `${productId}-${timestamp}.json`);
-      fs.writeFileSync(jsonFilePath, json);
-      console.log('JSON file saved');
+//       // Save JSON file
+//       const jsonFilePath = path.join('uploads', `${productId}-${timestamp}.json`);
+//       fs.writeFileSync(jsonFilePath, json);
+//       console.log('JSON file saved');
 
-      // Save PNG file
-      const pngFilePath = path.join('uploads', `${productId}-${timestamp}.png`);
-      fs.writeFileSync(pngFilePath, Buffer.from(png, 'base64'));
-      console.log('PNG file saved');
-      console.log("key", userId);
+//       // Save PNG file
+//       const pngFilePath = path.join('uploads', `${productId}-${timestamp}.png`);
+//       fs.writeFileSync(pngFilePath, Buffer.from(png, 'base64'));
+//       console.log('PNG file saved');
+//       console.log("key", userId);
 
-      // Emit PNG to another front-end project
-      io.emit('newImage', { name: pngFilePath, key: userId, png: png });
+//       // Emit PNG to another front-end project
+//       io.emit('newImage', { name: pngFilePath, key: userId, png: png });
 
-      console.log('Files saved and PNG sent to another front-end project');
-      if (callback) {
-        callback({ success: true, message: 'Upload successful' });
-      }
-    } catch (error) {
-      console.error('Error saving files:', error);
-      if (callback) {
-        callback({ success: false, message: 'Upload failed', error });
-      }
-    }
-  });
+//       console.log('Files saved and PNG sent to another front-end project');
+//       if (callback) {
+//         callback({ success: true, message: 'Upload successful' });
+//       }
+//     } catch (error) {
+//       console.error('Error saving files:', error);
+//       if (callback) {
+//         callback({ success: false, message: 'Upload failed', error });
+//       }
+//     }
+//   });
 
-  socket.on('disconnect', () => {
-    console.log('A user disconnected');
-  });
-});
+//   socket.on('disconnect', () => {
+//     console.log('A user disconnected');
+//   });
+// });
 
 // Start the socket server on a different port
-try {
-  console.log("SOCKET_PORT", SOCKET_PORT);
+// try {
+//   console.log("SOCKET_PORT", SOCKET_PORT);
   
-  socketServer.listen(SOCKET_PORT, () => {
-    console.log(`Socket server is running on port ${SOCKET_PORT}`);
-  });
-} catch (error) {
-  console.error(`❌ Error starting socket server on port ${SOCKET_PORT}:`, error);
-}
+//   socketServer.listen(SOCKET_PORT, () => {
+//     console.log(`Socket server is running on port ${SOCKET_PORT}`);
+//   });
+// } catch (error) {
+//   console.error(`❌ Error starting socket server on port ${SOCKET_PORT}:`, error);
+// }
 
 // Start the main server
 server.listen(PORT, async () => {

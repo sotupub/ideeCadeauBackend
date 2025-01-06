@@ -4,4 +4,5 @@ export enum EOrder {
     CANCELLED = "Annulée",
     SHIPPED = "Expédiée",
     DELIVERED = "Livrée",
+    COMPLETED = "Complétée"
 }
