@@ -5,7 +5,7 @@ import { Category } from "../models/category.entity";
 import { SubCategory } from "../models/subcategory.entity";
 import { Model } from "../models/model.entity";
 import { OrderItem } from "../models/orderItem.entity";
-import { In, Like } from "typeorm";
+import { In } from "typeorm";
 import { cacheService } from "../services/cache.service";
 import { Review } from "../models/review.entity";
 import { EReview } from "../models/enums/EReview";
@@ -354,7 +354,7 @@ export class ProductController {
                 product.stockAvailability = stockAvailability;
             }
             if (options) {
-                product.options = options;
+                product.options = options.map((option: string) => EOption[option as keyof typeof EOption]);
             }
 
             await productRepository.save(product);

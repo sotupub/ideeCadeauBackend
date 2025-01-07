@@ -92,7 +92,6 @@ export class ReviewController {
   }
 
 
-
   static async getAllReviews(req: Request, res: Response): Promise<Response> {
     const reviewRepository = AppDataSource.getRepository(Review);
 
@@ -129,7 +128,7 @@ export class ReviewController {
     try {
       const review = await reviewRepository.findOne({ 
         where: { id: reviewId },
-        relations: ["product"],
+        relations: ["product","user"],
       });
 
       if (!review) {

@@ -25,7 +25,7 @@ export class OrderItem {
   @OneToMany(() => Review, (review) => review.orderItem)
   reviews: Review[];
 
-  @Column({ type: "varchar", length: 40000, nullable: true })
+  @Column({ type: "text", nullable: true })
   image?: string;
 
   @Column({nullable: true})

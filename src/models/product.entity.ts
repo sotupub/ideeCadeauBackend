@@ -73,7 +73,7 @@ import { EOption } from "./enums/EOption";
       type: "enum",
       enum: EOption,
       array: true,
-      default: [EOption.TEXTE],
+      default: [EOption.TEXT],
     })
     options: EOption[];
 

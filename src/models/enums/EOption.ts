@@ -1,4 +1,8 @@
 export enum EOption {
-    TEXTE = "Texte",
+    TEXT = "Text",
     IMAGE = "Image",
+    SHAPE = "Shape",
+    DRAWING = "Drawing",
+    ICON = "Icon",
+
 }
