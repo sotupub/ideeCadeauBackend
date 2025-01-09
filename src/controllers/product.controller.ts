@@ -523,44 +523,75 @@ export class ProductController {
     static async getProductsByName(req: Request, res: Response): Promise<Response> {
         const { name } = req.query;
         console.log('Received request with name:', name);
+    
         if (!name) {
             return res.status(400).json({ message: "Name query parameter is required" });
         }
+    
         const productRepository = AppDataSource.getRepository(Product);
+    
         try {
             console.log(`Searching for products with name containing: ${name}`);
-
-            // Construire une requête dynamique pour vérifier la présence de chaque lettre
-            const queryBuilder = productRepository.createQueryBuilder('product');
-            const letters = (name as String).split('');
-            letters.forEach((letter: String, index: any) => {
-                queryBuilder.andWhere(`LOWER(product.name) LIKE :letter${index}`, { [`letter${index}`]: `%${letter}%` });
+    
+            // Construire une requête dynamique pour rechercher par lettres
+            const queryBuilder = productRepository.createQueryBuilder('product')
+                .leftJoinAndSelect('product.categories', 'categories')
+                .leftJoinAndSelect('product.subCategories', 'subCategories');
+            
+            const letters = (name as string).split('');
+            letters.forEach((letter, index) => {
+                queryBuilder.andWhere(`LOWER(product.name) LIKE :letter${index}`, {
+                    [`letter${index}`]: `%${letter.toLowerCase()}%`,
+                });
             });
-
+    
             const products = await queryBuilder
-                .select(['product.id', 'product.images', 'product.name', 'product.price', 'product.oldprice'])
+                .select([
+                    'product.id',
+                    'product.images',
+                    'product.name',
+                    'product.price',
+                    'product.oldprice',
+                    'product.averageRating',
+                    'product.createdAt',
+                    'categories.id',
+                    'categories.name',
+                    'subCategories.id',
+                    'subCategories.name',
+                ])
                 .getMany();
-
+    
             if (!products || products.length === 0) {
                 return res.status(404).json({ message: "No products found" });
             }
-
+    
             console.log(`Found ${products.length} products`);
-
+    
             const mappedProducts = products.map(product => ({
                 id: product.id,
                 images: product.images.slice(0, 2),
                 name: product.name,
                 price: product.price,
-                oldprice: product.oldprice
+                oldprice: product.oldprice,
+                averageRating: product.averageRating,
+                createdAt: product.createdAt,
+                categories: product.categories.map(category => ({
+                    id: category.id,
+                    name: category.name,
+                })),
+                subCategories: product.subCategories?.map(subCategory => ({
+                    id: subCategory.id,
+                    name: subCategory.name,
+                })) || [],
             }));
+    
             return res.status(200).json(mappedProducts);
         } catch (error: unknown) {
             console.error('Error fetching products by name:', error);
             const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
             return res.status(500).json({ message: "Internal server error", error: errorMessage });
         }
-    }
+    }    
 
     static async getRecentProducts(req: Request, res: Response): Promise<Response> {
         const CACHE_KEY = 'recent_products';
